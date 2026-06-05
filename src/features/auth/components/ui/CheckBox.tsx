@@ -16,7 +16,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             w-4 h-4 rounded border-2 flex items-center justify-center transition-all
             ${checked ? 'bg-stone-900 border-stone-900' : 'bg-white border-stone-300'}
           `}>
-            {checked && <CheckIcon />}
+            {checked && <CheckIcon className="text-white"/>}
           </div>
         </div>
         <span className="text-sm text-stone-600 leading-tight">{label}</span>

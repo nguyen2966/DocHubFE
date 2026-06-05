@@ -39,7 +39,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         <CoverPanel />
 
         <div className="flex flex-1 items-center justify-center px-10">
-          <div className="w-full max-w-[400px]">
+          <div className="w-full max-w-[500px]">
             {children}
           </div>
         </div>

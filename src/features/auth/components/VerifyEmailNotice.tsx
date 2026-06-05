@@ -4,14 +4,15 @@ import { authService } from '../services/auth.service'
 import { Header } from '../../../shared/components/Header'
 import Mail_Verification from "../../../assets/mail_verification.png";
 
+
 type ResendStatus = 'idle' | 'loading' | 'sent' | 'error'
 
 export function VerifyEmailPage() {
-  const location = useLocation()
-  const email = location.state?.email ?? ''
+  const location = useLocation();
+  const email = location.state?.email ?? '';
 
-  const [resendStatus, setResendStatus] = useState<ResendStatus>('idle')
-  const [cooldown, setCooldown] = useState(0)
+  const [resendStatus, setResendStatus] = useState<ResendStatus>('idle');
+  const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
     if (cooldown <= 0) return
@@ -33,7 +34,7 @@ export function VerifyEmailPage() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <Header showFunctions={false}/>
+      <Header showFunctions={false} />
 
       {/* Content */}
       <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 -mt-12">

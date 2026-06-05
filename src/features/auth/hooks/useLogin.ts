@@ -4,6 +4,7 @@ import { authService } from '../services/auth.service';
 import { useAuthStore } from '../../../shared/hooks/useAuthStore';
 import { LoginFormValues } from '../schema/login.schema';
 
+
 export function useLogin() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
@@ -19,9 +20,9 @@ export function useLogin() {
       navigate('/dashboard')
     } catch (error: any) {
       const status = error.response?.status
-      if (status === 401) setServerError('Email hoặc mật khẩu không đúng')
-      else if (status === 403) setServerError('Vui lòng xác thực email trước khi đăng nhập')
-      else setServerError('Đã có lỗi xảy ra, vui lòng thử lại')
+      if (status === 401) setServerError('Incorrect email or password. Please try again.')
+      else if (status === 403) setServerError('Please verify your account before log in')
+      else setServerError('Error, please wait and try again')
     } finally {
       setIsLoading(false)
     }

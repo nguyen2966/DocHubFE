@@ -23,24 +23,24 @@ export function SignupForm() {
   })
 
   return (
-    <div className="w-full max-w-sm">
+    <div className="w-full">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-stone-900 mb-1.5">Tạo tài khoản</h1>
-        <p className="text-sm text-stone-500">Tham gia Lumin để cộng tác trên tài liệu nhóm.</p>
+        <h1 className="text-2xl font-semibold text-stone-900 mb-1.5">Create your account</h1>
+        <p className="text-sm text-stone-500">Join Folio to collaborate on your team's documents.</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
         <FormError message={serverError} />
 
         <Input
-          label="Họ và tên"
-          placeholder="e.g. Nguyen Van A"
+          label="Full name"
+          placeholder="e.g. John Doe"
           required
           error={errors.fullName?.message}
           {...register('fullName')}
         />
         <Input
-          label="Email"
+          label="Email address"
           type="email"
           placeholder="name@company.com"
           required
@@ -48,26 +48,22 @@ export function SignupForm() {
           {...register('email')}
         />
         <Input
-          label="Mật khẩu"
+          label="Password"
           type="password"
-          placeholder="Tối thiểu 8 ký tự"
+          placeholder="Enter a password (min. 8 characters)"
           required
           error={errors.password?.message}
           {...register('password')}
         />
         <Input
-          label="Xác nhận mật khẩu"
+          label="Confirm password"
           type="password"
-          placeholder="Nhập lại mật khẩu"
+          placeholder="Confirm your password"
           required
           error={errors.confirmPassword?.message}
           {...register('confirmPassword')}
         />
 
-        {/*
-          Checkbox dùng Controller vì react-hook-form cần
-          kiểm soát checked (boolean) thay vì value (string)
-        */}
         <Controller
           name="agreed"
           control={control}
@@ -78,13 +74,13 @@ export function SignupForm() {
               error={errors.agreed?.message}
               label={
                 <>
-                  Tôi đồng ý với{' '}
+                  I agree with{' '}
                   <button type="button" className="font-medium text-stone-900 hover:underline underline-offset-2">
-                    Điều khoản dịch vụ
+                    Terms of Service
                   </button>{' '}
-                  và{' '}
+                  and{' '}
                   <button type="button" className="font-medium text-stone-900 hover:underline underline-offset-2">
-                    Chính sách bảo mật
+                    Privacy Policy
                   </button>
                 </>
               }
@@ -93,14 +89,14 @@ export function SignupForm() {
         />
 
         <Button type="submit" loading={isLoading}>
-          {!isLoading && 'Đăng ký'}
+          {!isLoading && 'Sign up'}
         </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-stone-500">
-        Đã có tài khoản?{' '}
+        Already have an account?{' '}
         <Link to="/login" className="font-medium text-stone-900 hover:underline underline-offset-2">
-          Đăng nhập
+          Sign in
         </Link>
       </p>
     </div>
