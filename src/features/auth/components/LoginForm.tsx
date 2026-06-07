@@ -48,7 +48,7 @@ export function LoginForm() {
 
 
         <Button type="submit" loading={isLoading}>
-          {!isLoading && 'Đăng nhập'}
+          {!isLoading && 'Sign in'}
         </Button>
       </form>
 

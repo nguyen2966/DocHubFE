@@ -17,8 +17,8 @@ export function useSignup() {
       navigate('/verify-email', { state: { email: values.email } })
     } catch (error: any) {
       const status = error.response?.status
-      if (status === 409) setServerError('Email này đã được sử dụng')
-      else setServerError('Đã có lỗi xảy ra, vui lòng thử lại')
+      if (status === 409) setServerError('This email is already used')
+      else setServerError('Error, please try again')
     } finally {
       setIsLoading(false)
     }
