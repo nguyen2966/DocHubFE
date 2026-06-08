@@ -1,36 +1,3 @@
-// import axios from 'axios'
-// import { useAuthStore } from '../hooks/useAuthStore'
-// import { authService } from '../../features/auth/services/auth.service'
-
-// const api = axios.create({
-//   baseURL: import.meta.env.VITE_API_URL,
-//   withCredentials: true,
-// });
-
-// api.interceptors.response.use(
-//   (response) => response,
-//   async (error) => {
-//     const original = error.config
-
-//     if (error.response?.status === 401 && !original._retry) {
-//       original._retry = true
-
-//       try {
-//         await authService.refreshToken();
-//         return api(original);
-//       } catch {
-//         useAuthStore.getState().clearAuth();
-//         window.location.href = '/login';
-//         return Promise.reject(error);
-//       }
-//     }
-
-//     return Promise.reject(error);
-//   },
-// );
-
-// export default api;
-
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '../hooks/useAuthStore'
 import { authService } from '../../features/auth/services/auth.service'

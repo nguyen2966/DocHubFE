@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { authService } from '../services/auth.service'
 import { SignupFormValues } from '../schema/signup.schema'
 
 export function useSignup() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [serverError, setServerError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -13,12 +14,22 @@ export function useSignup() {
     setIsLoading(true)
     try {
       await authService.signup(values)
-      // Không login ngay — redirect sang trang thông báo verify email
-      navigate('/verify-email', { state: { email: values.email } })
+
+      // Giữ invitationToken trong state để WelcomePage biết cần redirect vào workspace
+      // (backend claimPendingInvitations chạy tự động khi verify email,
+      //  WelcomePage đọc claimedWorkspaceId từ response của /auth/me sau verify)
+      const invitationToken = searchParams.get('invitationToken')
+
+      navigate('/verify-email', {
+        state: {
+          email: values.email,
+          invitationToken, // truyền sang VerifyEmailNotice để hiển thị hint nếu cần
+        },
+      })
     } catch (error: any) {
       const status = error.response?.status
-      if (status === 409) setServerError('This email is already used')
-      else setServerError('Error, please try again')
+      if (status === 409) setServerError('This email is already in use.')
+      else setServerError('Something went wrong. Please try again.')
     } finally {
       setIsLoading(false)
     }

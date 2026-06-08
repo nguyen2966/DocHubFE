@@ -3,10 +3,11 @@ import { GuestRoute } from './shared/components/GuestRoute';
 import { LoginForm } from './features/auth/components/LoginForm';
 import { SignupForm } from './features/auth/components/SignupForm';
 import { VerifyEmailPage } from './features/auth/components/VerifyEmailNotice';
-import { AuthPage } from './features/auth/components/AuthPage';
+import { AuthPage } from './pages/auth/AuthPage';
 import { WelcomePage } from './features/auth/components/WelcomPage';
 import { ProtectedRoute } from './shared/components/ProtectedRoute';
 import { DashBoardPage } from './features/dashboard/DashboardPage';
+import { AcceptInvitationPage } from './layouts/AcceptInvitationPage';
 
 function App() {
   return (
@@ -24,6 +25,8 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashBoardPage />} />
         </Route>
+
+        <Route  path='/invitations/:token/accept' element={<AcceptInvitationPage/>}></Route>
 
       </Routes>
     </BrowserRouter>
