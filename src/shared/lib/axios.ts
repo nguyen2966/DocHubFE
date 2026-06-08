@@ -1,35 +1,49 @@
-import axios from 'axios';
-import { useAuthStore } from '../hooks/useAuthStore';
-import { authService } from '../../features/auth/services/auth.service';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
+import { useAuthStore } from '../hooks/useAuthStore'
+import { authService } from '../../features/auth/services/auth.service'
+
+interface RetryAxiosRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean
+}
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
-  withCredentials: true,   // gửi cookie accessToken tự động
+  withCredentials: true,
 })
 
-// Request interceptor: không cần attach accessToken thủ công vì dùng cookie
+let refreshPromise: Promise<unknown> | null = null
 
-// Response interceptor: tự động refresh khi nhận 403
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const original = error.config
+  async (error: AxiosError) => {
+    const original = error.config as RetryAxiosRequestConfig | undefined
 
-    if (error.response?.status === 403 && !original._retry) {
-      original._retry = true
-      try {
-        // Không cần đọc/ghi token thủ công — cookie tự xử lý
-        await authService.refreshToken()
-        return api(original)
-      } catch {
-        useAuthStore.getState().clearAuth()
-        window.location.href = '/login'
-        return Promise.reject(error)
-      }
+    if (!original) {
+      return Promise.reject(error)
     }
 
-    return Promise.reject(error)
-  }
-);
+    if (error.response?.status !== 401 || original._retry) {
+      return Promise.reject(error)
+    }
 
-export default api;
+    original._retry = true
+
+    try {
+      if (!refreshPromise) {
+        refreshPromise = authService.refreshToken().finally(() => {
+          refreshPromise = null
+        })
+      }
+
+      await refreshPromise
+
+      return api(original)
+    } catch (refreshError) {
+      useAuthStore.getState().clearAuth()
+      window.location.href = '/login'
+      return Promise.reject(refreshError)
+    }
+  },
+)
+
+export default api

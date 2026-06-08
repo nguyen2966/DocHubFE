@@ -1,5 +1,6 @@
 import api from '../../../shared/lib/axios';
 import { LoginPayload, SignupPayload, AuthUser } from '../types/auth.type';
+import authApi from '../../../shared/lib/refreshAxios';
 
 export const authService = {
   login: (payload: LoginPayload) =>
@@ -13,11 +14,13 @@ export const authService = {
     api.post('/auth/logout'),
 
   refreshToken: () =>
-    api.post<{ user: AuthUser }>('/auth/refresh-token'),
+    authApi.post<{ user: AuthUser }>('/auth/refresh-token'),
 
-  resendVerificationEmail: (email: string) =>
+  resendVerificationEmail: (email: string) => {
     api.post('/auth/resend-verification', { email }),
-
+    console.log("authApi was called instead of api");
+  },
+    
   me: ()=> 
     api.get('/auth/me'),
 }

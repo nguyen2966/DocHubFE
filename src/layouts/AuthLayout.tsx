@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
-import Logo from "../../../../assets/folio_logo.png";
-import CoverImage from "../../../../assets/auth_page.png";
+import Logo from '../assets/folio_logo.png';
+import CoverImage from "../assets/auth_page.png";
 
 function CoverPanel() {
   return (
