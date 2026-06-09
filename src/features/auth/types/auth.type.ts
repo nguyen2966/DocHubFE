@@ -10,7 +10,7 @@ export interface SignupPayload {
 }
 
 export interface AuthUser {
-  id: string
+  _id: string
   email: string
   fullName: string
 }

@@ -1,5 +1,5 @@
 import { forwardRef, InputHTMLAttributes, useState } from 'react'
-import { EyeIcon, EyeOffIcon } from '../../../../shared/components/icons'
+import { EyeIcon, EyeOffIcon } from '../../../../shared/components/ui/icons'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string

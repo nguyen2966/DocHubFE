@@ -43,7 +43,7 @@ export function WelcomePage() {
         </div>
 
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate('/')}
           className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
         >
           Go to Workspaces

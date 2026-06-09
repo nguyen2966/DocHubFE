@@ -1,5 +1,5 @@
 import { forwardRef, InputHTMLAttributes } from 'react'
-import { CheckIcon } from '../../../../shared/components/icons'
+import { CheckIcon } from '../../../../shared/components/ui/icons'
 
 interface CheckboxProps extends InputHTMLAttributes<HTMLInputElement> {
   label: React.ReactNode
