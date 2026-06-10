@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   FileText,
   Users,
@@ -8,6 +8,7 @@ import {
 } from '@phosphor-icons/react';
 import { can } from '../../helper/can-permission';
 import { WorkspaceSwitcher } from '../../features/workspaces/components/WorkspaceSwitcher';
+import { SignOut } from "@phosphor-icons/react";
 
 export function WorkspaceSidebar({ workspace, permissions, workspaceId }) {
   const navItems = [
@@ -35,7 +36,12 @@ export function WorkspaceSidebar({ workspace, permissions, workspaceId }) {
       to: `/workspaces/${workspaceId}/settings`,
       show: can(permissions, 'workspace:manage_settings'),
     },
-  ]
+  ];
+
+  const navigate = useNavigate();
+  function goHome() {
+    navigate('/');
+  }
 
   return (
     <aside className="h-[calc(100vh-64px)] w-70 shrink-0 border-r border-stone-200 bg-white px-5 py-6">
@@ -68,7 +74,28 @@ export function WorkspaceSidebar({ workspace, permissions, workspaceId }) {
               </NavLink>
             )
           })}
+
+
       </nav>
+
+
+      <button
+        onClick={goHome}
+        className="
+        mt-auto
+        flex items-center gap-3
+        rounded-xl
+        px-3 py-2.5
+        text-[14px] font-medium
+        text-stone-900
+        transition
+        hover:bg-stone-50
+        hover:text-red-600
+      "
+      >
+        <SignOut size={18} weight="regular" />
+        <span>Exit</span>
+      </button>
     </aside>
   )
 }

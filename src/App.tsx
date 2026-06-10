@@ -18,6 +18,8 @@ import { AcceptInvitationPage } from './layouts/AcceptInvitationPage';
 import { ForrbiddenPage } from './pages/error/ForbiddenPage';
 import { RequireWorkspacePermission } from './shared/components/routes/RequiredRoleRoute';
 import { Toaster } from 'sonner';
+import { NotfoundPage } from './pages/error/NotfoundPage';
+import { WorkspaceDocumentDetailPage } from './pages/document-details/DocumentDetailPage';
 
 function App() {
   return (
@@ -71,9 +73,19 @@ function App() {
             />
           </Route>
 
+          <Route
+              path="/workspaces/:workspaceId/documents/:documentId"
+              element={
+                <RequireWorkspacePermission permission="workspace:view">
+                 <WorkspaceDocumentDetailPage />
+                </RequireWorkspacePermission>
+              }
+            />
+
         </Route>
 
         <Route path="/403" element={<ForrbiddenPage />} />
+        <Route path="/404" element={<NotfoundPage />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

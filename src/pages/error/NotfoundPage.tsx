@@ -1,8 +1,7 @@
-import React from 'react';
-import ForbiddenImg from '../../assets/403.png';
+import NotfoundImg from '../../assets/404.png';
 import { useNavigate } from 'react-router-dom';
 
-export const ForrbiddenPage: React.FC = () => {
+export const NotfoundPage = () => {
   // Thay đổi logic navigate tùy thuộc vào Router bạn đang dùng (như react-router-dom hoặc Next.js Link)
   const navigate = useNavigate();
   const handleGoToWorkspaces = () => {
@@ -16,7 +15,7 @@ export const ForrbiddenPage: React.FC = () => {
         {/* Placeholder Image */}
         <div className="mb-8 w-64 h-64 flex items-center justify-center">
           <img 
-            src={ForbiddenImg} 
+            src={NotfoundImg} 
             alt="Access Denied Illustration"
             className="max-w-full max-h-full object-contain"
           />
@@ -24,19 +23,17 @@ export const ForrbiddenPage: React.FC = () => {
 
         {/* Error Code */}
         <h1 className="text-4xl font-bold tracking-tight text-black sm:text-5xl mb-4">
-          403
+          404
         </h1>
 
         {/* Main Title */}
         <h2 className="text-xl font-semibold text-neutral-900 sm:text-2xl mb-3">
-          Looks like you need access
+          Oops! Page not found
         </h2>
 
         {/* Description */}
         <p className="text-sm text-neutral-500 max-w-lg leading-relaxed mb-8">
-          You don't have permission to view this page. Please contact your{' '}
-          <span className="font-semibold text-neutral-800">Workspace admin</span> or the{' '}
-          <span className="font-semibold text-neutral-800">document owner</span> to request access.
+           The link might be broken, or the document was deleted
         </p>
 
         {/* Action Button */}
@@ -44,7 +41,7 @@ export const ForrbiddenPage: React.FC = () => {
           onClick={handleGoToWorkspaces}
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-950 focus:ring-offset-2"
         >
-          Go to Workspaces
+          Back to Workspaces
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
             fill="none" 
