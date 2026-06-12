@@ -15,10 +15,20 @@ import { DocumentRoleBadge } from './DocumentRoleBadge';
 interface DocumentViewerToolbarProps {
   workspaceId: string
   document: Document
+  isPdfEditing: boolean
+  isSavingPdf: boolean
+  onStartEditPdf: () => void
+  onCancelEditPdf: () => void
+  onSavePdf: () => void
 }
 
 export function DocumentViewerToolbar({
-  document,
+  document,  
+  isPdfEditing,
+  onStartEditPdf,
+  onCancelEditPdf,
+  onSavePdf,
+  isSavingPdf,
 }: DocumentViewerToolbarProps) {
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
@@ -28,24 +38,38 @@ export function DocumentViewerToolbar({
       <div className="flex items-center gap-2">
         <DocumentRoleBadge document={document} />
 
-        {canEditDocument(document) && (
-          <button
+        {canEditDocument(document) && !isPdfEditing && (
+          <button onClick={onStartEditPdf}
             type="button"
-            className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium hover:bg-stone-50"
-          >
+            className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium hover:bg-stone-50">
             <PencilSimple size={16} />
             Edit PDF
           </button>
         )}
 
-        {canCommentDocument(document) && (
+        {canEditDocument(document) && isPdfEditing && (
+          <>
+            <button className="rounded-lg bg-stone-900 px-3 py-2 text-sm font-medium text-white"
+                    onClick={onSavePdf}
+                    disabled={isSavingPdf}>
+              Save
+            </button>
+
+            <button
+              onClick={onCancelEditPdf}
+              className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium"
+            >
+              Cancel
+            </button>
+          </>
+        )}
+
+        {canCommentDocument(document) && !isPdfEditing && (
           <button
             type="button"
-            onClick={() => setCommentsOpen(true)}
-            className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium hover:bg-stone-50"
-          >
+            className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium hover:bg-stone-50">
             <ChatText size={16} />
-            Comments
+            Comment
           </button>
         )}
 

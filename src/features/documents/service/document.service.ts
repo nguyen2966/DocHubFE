@@ -1,4 +1,5 @@
 import api from '../../../shared/lib/axios';
+import type { AxiosProgressEvent } from 'axios';
 
 import type {
   CreateMarkdownDocumentPayload,
@@ -6,10 +7,11 @@ import type {
   DocumentMember,
   RenameDocumentPayload,
   ShareDocumentPayload,
+  UploadPdfResponse
 } from '../types/document.type'
 
 const basePath = (workspaceId: string) =>
-  `/workspaces/${workspaceId}/documents`
+  `/workspaces/${workspaceId}/documents`;
 
 export const documentService = {
   async getDocuments(workspaceId: string): Promise<Document[]> {
@@ -39,26 +41,36 @@ export const documentService = {
     workspaceId: string,
     file: File,
     title?: string,
-  ): Promise<Document> {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('sourceType', 'file_upload')
+    jobId?: string,
+    onUploadProgress?: (event: AxiosProgressEvent) => void,
+    signal?: AbortSignal
+  ): Promise<UploadPdfResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('sourceType', 'file_upload');
+    if (jobId) formData.append('jobId', jobId);
 
-    if (title) {
-      formData.append('title', title)
+    if (title?.trim()) {
+      formData.append('title', title.trim())
     }
 
-    const res = await api.post<Document>(
+    const res = await api.post<UploadPdfResponse>(
       `${basePath(workspaceId)}/upload`,
       formData,
       {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        onUploadProgress,
+        signal
       },
     )
 
     return res.data
+  },
+
+  async cancelUpload(workspaceId: string, jobId: string): Promise<void> {
+    await api.delete(`${basePath(workspaceId)}/upload/${jobId}/cancel`)
   },
 
   async renameDocument(
@@ -109,4 +121,28 @@ export const documentService = {
   ): Promise<void> {
     await api.delete(`${basePath(workspaceId)}/${documentId}/members/${userId}`)
   },
+
+  async editPdf(workspaceId: string, documentId: string, file: Blob): Promise<Document> {
+    const formData = new FormData()
+    formData.append('file', file, 'edited.pdf')
+
+    const response = await api.patch<Document>(
+      `${basePath(workspaceId)}/${documentId}/content`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      },
+    )
+
+    return response.data
+  },
+
+  async createUploadJob(workspaceId: string): Promise<{ jobId: string }> {
+    const res = await api.post<{ jobId: string }>(
+      `${basePath(workspaceId)}/upload-jobs`,
+    )
+    return res.data
+  }
 }

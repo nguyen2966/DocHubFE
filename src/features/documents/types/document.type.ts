@@ -46,6 +46,10 @@ export interface Document {
   updatedAt: string
 }
 
+export interface UploadPdfResponse extends Document {
+  jobId: string;
+}
+
 export interface DocumentMember {
   _id: string
   documentId: string
@@ -80,3 +84,7 @@ export interface ShareDocumentPayload {
   userId: string
   role: Exclude<DocumentRole, 'owner'>
 }
+
+export type UploadJobStatus =
+  | 'PENDING' | 'UPLOADING' | 'FILE_SAVED'
+  | 'EXTRACTING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
