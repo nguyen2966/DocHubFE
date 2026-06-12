@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
-import { authService } from '../services/auth.service'
-import { Header } from '../../../shared/components/Header'
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { authService } from '../services/auth.service';
+import { Header } from '../../../shared/components/Header';
 import Mail_Verification from "../../../assets/mail_verification.png";
 
 
-type ResendStatus = 'idle' | 'loading' | 'sent' | 'error'
+type ResendStatus = 'idle' | 'loading' | 'sent' | 'error';
 
 export function VerifyEmailPage() {
   const location = useLocation();
@@ -18,7 +18,7 @@ export function VerifyEmailPage() {
     if (cooldown <= 0) return
     const timer = setInterval(() => setCooldown((c) => c - 1), 1000)
     return () => clearInterval(timer)
-  }, [cooldown])
+  }, [cooldown]);
 
   const handleResend = async () => {
     setResendStatus('loading')
@@ -77,7 +77,7 @@ export function VerifyEmailPage() {
           {/* Feedback messages */}
           {resendStatus === 'sent' && (
             <p className="text-sm text-green-600">
-              ✓ Verification email sent — please check your inbox.
+              Verification email sent — please check your inbox.
             </p>
           )}
           {resendStatus === 'error' && (
@@ -88,5 +88,5 @@ export function VerifyEmailPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

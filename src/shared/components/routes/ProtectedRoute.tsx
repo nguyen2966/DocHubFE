@@ -11,7 +11,7 @@
 
 import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
-import { useAuthStore } from '../hooks/useAuthStore'
+import { useAuthStore } from '../../hooks/useAuthStore'
 
 export function ProtectedRoute() {
   const location = useLocation()

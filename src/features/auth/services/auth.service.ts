@@ -17,8 +17,8 @@ export const authService = {
     authApi.post<{ user: AuthUser }>('/auth/refresh-token'),
 
   resendVerificationEmail: (email: string) => {
-    api.post('/auth/resend-verification', { email }),
-    console.log("authApi was called instead of api");
+    api.post('/auth/resend-verification', { email })
+   // console.log("authApi was called instead of api");
   },
     
   me: ()=> 

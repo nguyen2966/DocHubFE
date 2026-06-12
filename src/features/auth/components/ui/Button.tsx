@@ -1,5 +1,5 @@
 import { ButtonHTMLAttributes } from 'react'
-import { SpinnerIcon } from '../../../../shared/components/icons'
+import { SpinnerIcon } from '../../../../shared/components/ui/icons'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean
