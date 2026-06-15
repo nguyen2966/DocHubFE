@@ -1,0 +1,52 @@
+import { Header } from '../../shared/components/Header'
+import { useSharedDocuments } from '../../features/documents/hooks/userSharedDocuments'
+import { SharedDocumentTable } from '../../features/documents/components/shared-with-me/SharedDocumentTable'
+import { SharedDocumentEmptyState } from '../../features/documents/components/shared-with-me/SharedDocumentEmptyState'
+
+export function SharedWithMePage() {
+  const {
+    data: documents = [],
+    isLoading,
+    isError,
+  } = useSharedDocuments()
+
+  return (
+    <div className="min-h-screen bg-white">
+      <Header showFunctions />
+
+      <main className="mx-auto max-w-6xl px-8 py-8">
+        <div className="mb-8 flex items-center gap-4">
+          <h1 className="text-2xl font-semibold text-stone-900">
+            Shared with me
+          </h1>
+
+          <div className="h-6 w-px bg-stone-200" />
+
+          <span className="text-sm text-stone-500">
+            Total {documents.length}
+          </span>
+        </div>
+
+        {isLoading && (
+          <div className="text-sm text-stone-500">
+            Loading shared documents...
+          </div>
+        )}
+
+        {isError && (
+          <div className="text-sm text-red-500">
+            Failed to load shared documents.
+          </div>
+        )}
+
+        {!isLoading && !isError && documents.length === 0 && (
+          <SharedDocumentEmptyState />
+        )}
+
+        {!isLoading && !isError && documents.length > 0 && (
+          <SharedDocumentTable documents={documents} />
+        )}
+      </main>
+    </div>
+  )
+}
