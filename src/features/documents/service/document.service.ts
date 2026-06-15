@@ -1,5 +1,9 @@
 import api from '../../../shared/lib/axios';
 import type { AxiosProgressEvent } from 'axios';
+import type {
+  SharedDocument,
+  SharedDocumentDetail,
+} from '../types/document.type'
 
 import type {
   CreateMarkdownDocumentPayload,
@@ -7,11 +11,20 @@ import type {
   DocumentMember,
   RenameDocumentPayload,
   ShareDocumentPayload,
-  UploadPdfResponse
+  UploadPdfResponse,
+  DocumentAccessSummary,
+  SearchDocumentUserResult,
+  ShareDocumentAccessPayload,
+  ShareDocumentAccessResponse,
+  ShareRole,
 } from '../types/document.type'
+
 
 const basePath = (workspaceId: string) =>
   `/workspaces/${workspaceId}/documents`;
+
+const documentPath = (workspaceId: string, documentId: string) =>
+  `/workspaces/${workspaceId}/documents/${documentId}`
 
 export const documentService = {
   async getDocuments(workspaceId: string): Promise<Document[]> {
@@ -144,5 +157,91 @@ export const documentService = {
       `${basePath(workspaceId)}/upload-jobs`,
     )
     return res.data
-  }
+  },
+
+  async getSharedWithMeDocuments(): Promise<SharedDocument[]> {
+    const res = await api.get<SharedDocument[]>('/shared-with-me/documents')
+    return res.data
+  },
+
+  async getSharedWithMeDocumentDetail(
+    documentId: string,
+  ): Promise<SharedDocumentDetail> {
+    const res = await api.get<SharedDocumentDetail>(
+      `/shared-with-me/documents/${documentId}`,
+    )
+    return res.data
+  },
+
+
+  async getDocumentAccess(
+    workspaceId: string,
+    documentId: string,
+  ): Promise<DocumentAccessSummary> {
+    const res = await api.get<DocumentAccessSummary>(
+      `${documentPath(workspaceId, documentId)}/access`,
+    )
+    return res.data
+  },
+
+  async searchDocumentUsers(
+    workspaceId: string,
+    documentId: string,
+    email: string,
+  ): Promise<{ results: SearchDocumentUserResult[] }> {
+    const res = await api.get<{ results: SearchDocumentUserResult[] }>(
+      `${documentPath(workspaceId, documentId)}/users/search`,
+      { params: { email } },
+    )
+    return res.data
+  },
+
+  async shareDocumentAccess(
+    workspaceId: string,
+    documentId: string,
+    payload: ShareDocumentAccessPayload,
+  ): Promise<ShareDocumentAccessResponse> {
+    const res = await api.post<ShareDocumentAccessResponse>(
+      `${documentPath(workspaceId, documentId)}/members`,
+      payload,
+    )
+    return res.data
+  },
+
+  async updateDocumentUserRole(
+    workspaceId: string,
+    documentId: string,
+    userId: string,
+    role: ShareRole,
+  ) {
+    const res = await api.patch(
+      `${documentPath(workspaceId, documentId)}/members/${userId}`,
+      { role },
+    )
+    return res.data
+  },
+
+  async updatePendingDocumentShareRole(
+    workspaceId: string,
+    documentId: string,
+    shareId: string,
+    role: ShareRole,
+  ) {
+    const res = await api.patch(
+      `${documentPath(workspaceId, documentId)}/pending-shares/${shareId}`,
+      { role },
+    )
+    return res.data
+  },
+
+  async removePendingDocumentShare(
+    workspaceId: string,
+    documentId: string,
+    shareId: string,
+  ) {
+    const res = await api.delete(
+      `${documentPath(workspaceId, documentId)}/pending-shares/${shareId}`,
+    )
+    return res.data
+  },
 }

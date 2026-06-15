@@ -20,6 +20,8 @@ import { RequireWorkspacePermission } from './shared/components/routes/RequiredR
 import { Toaster } from 'sonner';
 import { NotfoundPage } from './pages/error/NotfoundPage';
 import { WorkspaceDocumentDetailPage } from './pages/document-details/DocumentDetailPage';
+import { SharedWithMePage } from './pages/share-with-me/ShareWithMePage';
+import { SharedDocumentDetailPage } from './pages/share-with-me-details/SharedDocumentDetail';
 
 function App() {
   return (
@@ -74,15 +76,21 @@ function App() {
           </Route>
 
           <Route
-              path="/workspaces/:workspaceId/documents/:documentId"
-              element={
-                <RequireWorkspacePermission permission="workspace:view">
-                 <WorkspaceDocumentDetailPage />
-                </RequireWorkspacePermission>
-              }
-            />
+            path="/workspaces/:workspaceId/documents/:documentId"
+            element={
+              <RequireWorkspacePermission permission="workspace:view">
+                <WorkspaceDocumentDetailPage />
+              </RequireWorkspacePermission>
+            }
+          />
 
         </Route>
+
+        <Route path="/shared-with-me" element={<SharedWithMePage />} />
+        <Route
+          path="/shared-with-me/documents/:documentId"
+          element={<SharedDocumentDetailPage />}
+        />
 
         <Route path="/403" element={<ForrbiddenPage />} />
         <Route path="/404" element={<NotfoundPage />} />

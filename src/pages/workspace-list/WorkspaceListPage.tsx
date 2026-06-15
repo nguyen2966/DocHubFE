@@ -14,9 +14,11 @@ export function WorkspaceListPage() {
   const { workspaces, isLoading, error } = useWorkspaces();
 
   return (
-    <div className="min-h-screen w-full max-w-[1440px] mx-auto bg-white flex flex-col">
-      <Header showFunctions />
+    <>
+    <Header showFunctions />
 
+    <div className="min-h-screen w-full max-w-[1440px] mx-auto bg-white flex flex-col">
+      
       <main className="flex w-full flex-col items-start p-0 min-h-[704px] grow">
 
         <div className="flex w-full flex-row items-end justify-between px-14 pt-10 pb-6 self-stretch">
@@ -73,5 +75,6 @@ export function WorkspaceListPage() {
         />
       )}
     </div>
+    </>
   );
 }
