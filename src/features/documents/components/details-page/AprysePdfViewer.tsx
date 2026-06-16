@@ -1,152 +1,532 @@
-import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
-import { PdfPageControls } from './ControlProps';
+import {
+  useEffect,
+  useRef,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+} from 'react'
+import WebViewerModule from '@pdftron/webviewer'
+import type { WebViewerInstance } from '@pdftron/webviewer'
+import { PdfPageControls } from './ControlProps'
 
 interface AprysePdfViewerProps {
-  fileUrl: string,
+  fileUrl: string
   isPdfEditing: boolean
 }
 
 export interface AprysePdfViewerRef {
   exportEditedPdf: () => Promise<Blob | null>
+  reloadOriginalPdf: () => void
 }
 
-import WebViewerModule from '@pdftron/webviewer';
-import type { WebViewerInstance } from '@pdftron/webviewer';
+const WebViewer = (WebViewerModule as any).default ?? WebViewerModule
 
-const WebViewer = (WebViewerModule as any).default ?? WebViewerModule;
+type AnyAnnotation = any
+type AnyContentEditManager = any
+type AnyContentBoxEditor = any
 
-export const AprysePdfViewer = forwardRef<AprysePdfViewerRef, AprysePdfViewerProps>(
-  function AprysePdfViewer({ fileUrl, isPdfEditing }, ref) {
-    const viewerRef = useRef<HTMLDivElement | null>(null)
-    const instanceRef = useRef<WebViewerInstance | null>(null)
+type ApryseWebComponentElement = HTMLElement & {
+  shadowRoot: ShadowRoot | null
+}
 
-    const [currentPage, setCurrentPage] = useState(1)
-    const [pageCount, setPageCount] = useState(1)
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms))
 
-    useEffect(() => {
-      if (!viewerRef.current) return;
+const waitFrame = () =>
+  new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve())
+  })
 
-      let disposed = false;
+function getContentEditManager(instance: WebViewerInstance) {
+  return instance.Core.documentViewer.getContentEditManager?.() as
+    | AnyContentEditManager
+    | undefined
+}
 
-      WebViewer(
-        {
-          path: '/webviewer/lib',
-          licenseKey: import.meta.env.VITE_APRYSE_LICENSE_KEY,
-          initialDoc: fileUrl,
-          fullAPI: true,
-        },
-        viewerRef.current,
-      ).then((instance) => {
-        if (disposed) return;
+function getApryseWebComponent(viewerElement: HTMLDivElement) {
+  return viewerElement.querySelector(
+    'apryse-webviewer',
+  ) as ApryseWebComponentElement | null
+}
 
-        instanceRef.current = instance;
-        console.log(instance.UI);
-        const { UI } = instance;
+function getApryseShadowRoot(viewerElement: HTMLDivElement) {
+  const webComponent = getApryseWebComponent(viewerElement)
 
-        // Cách mạnh nhất với Modular UI: clear header
-        UI.getModularHeader('default-top-header')?.setItems([]);
-        UI.getModularHeader('tools-header')?.setItems([]);
+  if (!webComponent?.shadowRoot) {
+    return null
+  }
 
-        UI.disableElements([
-          'page-nav-floating-header',
-        ]);
+  return webComponent.shadowRoot
+}
 
-        const { documentViewer } = instance.Core;
+function dispatchMouseLikeEvent(
+  target: Element,
+  type: string,
+  clientX: number,
+  clientY: number,
+) {
+  const win = target.ownerDocument?.defaultView ?? window
 
-        documentViewer.addEventListener('documentLoaded', () => {
-          setCurrentPage(documentViewer.getCurrentPage());
-          setPageCount(documentViewer.getPageCount());
+  const EventConstructor =
+    type.startsWith('pointer') && 'PointerEvent' in win
+      ? win.PointerEvent
+      : win.MouseEvent
 
-          instance.UI.setFitMode(instance.UI.FitMode.FitWidth);
-        })
+  const event = new EventConstructor(type, {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    view: win,
+    clientX,
+    clientY,
+    button: 0,
+    buttons: type === 'mouseup' || type === 'pointerup' ? 0 : 1,
+    pointerId: 1,
+    pointerType: 'mouse',
+    isPrimary: true,
+  } as MouseEventInit & PointerEventInit)
 
-        documentViewer.addEventListener('pageNumberUpdated', (pageNumber) => {
-          setCurrentPage(pageNumber);
-        })
-      })
+  target.dispatchEvent(event)
+}
 
-      return () => {
-        disposed = true
-        instanceRef.current?.UI.dispose?.()
-        instanceRef.current = null
-      }
-    }, [])
+function findPageAreaInShadowRoot(shadowRoot: ShadowRoot) {
+  const selectors = [
+    '[data-element="documentContainer"]',
+    '[data-element="pageContainer"]',
+    '.DocumentContainer',
+    '.documentContainer',
+    '.document-container',
+    '.PageContainer',
+    '.pageContainer',
+    '.page-container',
+    '.pageSection',
+    '.page',
+    '#app',
+  ]
 
-    useEffect(() => {
-      if (!instanceRef.current) return
+  for (const selector of selectors) {
+    const element = shadowRoot.querySelector(selector)
 
-      instanceRef.current.UI.loadDocument(fileUrl, {
-        filename: fileUrl.split('/').pop() ?? 'document.pdf',
-      })
-    }, [fileUrl])
-
-    const goToPage = (page: number) => {
-      const instance = instanceRef.current
-      if (!instance) return
-
-      const safePage = Math.min(Math.max(page, 1), pageCount)
-      instance.Core.documentViewer.setCurrentPage(safePage)
-      setCurrentPage(safePage)
+    if (element) {
+      return element
     }
+  }
 
-    useEffect(() => {
-      const instance = instanceRef.current
-      if (!instance) return
+  return shadowRoot.querySelector('#app')
+}
+
+async function clickInsideApryseShadowRoot(
+  viewerElement: HTMLDivElement,
+) {
+  const shadowRoot = getApryseShadowRoot(viewerElement)
+
+  if (!shadowRoot) {
+    console.warn('Apryse shadowRoot not found')
+    return false
+  }
+
+  const pageArea = findPageAreaInShadowRoot(shadowRoot)
+
+  if (!pageArea) {
+    console.warn('Apryse page area not found inside shadowRoot')
+    return false
+  }
+
+  const rect = pageArea.getBoundingClientRect()
+
+  const x = rect.left + 12
+  const y = rect.top + 12
+
+  const realTarget =
+    (shadowRoot as any).elementFromPoint?.(x, y) ?? pageArea
+
+  dispatchMouseLikeEvent(realTarget, 'pointerdown', x, y)
+  dispatchMouseLikeEvent(realTarget, 'mousedown', x, y)
+  dispatchMouseLikeEvent(realTarget, 'pointerup', x, y)
+  dispatchMouseLikeEvent(realTarget, 'mouseup', x, y)
+  dispatchMouseLikeEvent(realTarget, 'click', x, y)
+
+  await waitFrame()
+  await waitFrame()
+  await wait(300)
+
+  return true
+}
+
+function isContentEditPlaceholderAnnotation(annotation: AnyAnnotation) {
+  return Boolean(
+    annotation?.isContentEditPlaceholder?.() ||
+      annotation?.isContentEditPlaceHolder?.(),
+  )
+}
+
+function getContentEditBoxId(annotation: AnyAnnotation) {
+  const contentBoxId =
+    annotation?.getCustomData?.('contentEditBoxId') ?? null
+
+  if (!contentBoxId || typeof contentBoxId !== 'string') {
+    return null
+  }
+
+  return contentBoxId
+}
+
+function getSelectedContentEditPlaceholderAnnotation(
+  instance: WebViewerInstance,
+) {
+  const { annotationManager } = instance.Core
+
+  const selectedAnnotations =
+    annotationManager.getSelectedAnnotations?.() ?? []
+
+  return (
+    selectedAnnotations.find((annotation: AnyAnnotation) =>
+      isContentEditPlaceholderAnnotation(annotation),
+    ) ?? null
+  )
+}
+
+function getAllContentEditPlaceholderAnnotations(
+  instance: WebViewerInstance,
+) {
+  const { annotationManager } = instance.Core
+
+  const annotations =
+    annotationManager.getAnnotationsList?.() ?? []
+
+  return annotations.filter((annotation: AnyAnnotation) =>
+    isContentEditPlaceholderAnnotation(annotation),
+  )
+}
+
+function collectContentEditBoxIds(instance: WebViewerInstance) {
+  const ids = new Set<string>()
+
+  const selectedPlaceholder =
+    getSelectedContentEditPlaceholderAnnotation(instance)
+
+  const selectedBoxId =
+    getContentEditBoxId(selectedPlaceholder)
+
+  if (selectedBoxId) {
+    ids.add(selectedBoxId)
+  }
+
+  const placeholders =
+    getAllContentEditPlaceholderAnnotations(instance)
+
+  for (const annotation of placeholders) {
+    const contentBoxId = getContentEditBoxId(annotation)
+
+    if (contentBoxId) {
+      ids.add(contentBoxId)
+    }
+  }
+
+  return Array.from(ids)
+}
+
+async function stopAllContentBoxEditing(instance: WebViewerInstance) {
+  const contentEditManager = getContentEditManager(instance)
+
+  if (!contentEditManager) {
+    console.warn('ContentEditManager is not available')
+    return
+  }
+
+  const contentBoxIds = collectContentEditBoxIds(instance)
+
+  if (contentBoxIds.length === 0) {
+    return
+  }
+
+  for (const contentBoxId of contentBoxIds) {
+    try {
+      const box =
+        contentEditManager.getContentBoxById?.(contentBoxId)
+
+      if (!box) {
+        continue
+      }
+
+      await box.stopContentEditing?.()
+    } catch (error) {
+      console.warn(
+        'Failed to stop content editing for box:',
+        contentBoxId,
+        error,
+      )
+    }
+  }
+
+  await waitFrame()
+  await waitFrame()
+  await wait(300)
+}
+
+async function endContentEditMode(instance: WebViewerInstance) {
+  const contentEditManager = getContentEditManager(instance)
+
+  if (!contentEditManager) return
+
+  try {
+    await contentEditManager.endContentEditMode?.()
+  } catch (error) {
+    console.warn('Failed to end content edit mode:', error)
+  }
+
+  await waitFrame()
+  await waitFrame()
+  await wait(300)
+}
+
+export const AprysePdfViewer = forwardRef<
+  AprysePdfViewerRef,
+  AprysePdfViewerProps
+>(function AprysePdfViewer({ fileUrl, isPdfEditing }, ref) {
+  const viewerRef = useRef<HTMLDivElement | null>(null)
+  const instanceRef = useRef<WebViewerInstance | null>(null)
+  const activeContentEditorRef =
+    useRef<AnyContentBoxEditor | null>(null)
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageCount, setPageCount] = useState(1)
+
+  useEffect(() => {
+    if (!viewerRef.current) return
+
+    let disposed = false
+
+    ;(WebViewer as any)(
+      {
+        path: '/webviewer/lib',
+        licenseKey: import.meta.env.VITE_APRYSE_LICENSE_KEY,
+        initialDoc: fileUrl,
+        fullAPI: true,
+      },
+      viewerRef.current,
+    ).then((instance: WebViewerInstance) => {
+      if (disposed) return
+
+      instanceRef.current = instance
 
       const { UI, Core } = instance
       const { documentViewer } = Core
 
+      UI.getModularHeader('default-top-header')?.setItems([])
+      UI.getModularHeader('tools-header')?.setItems([])
+
+      UI.disableElements([
+        'page-nav-floating-header',
+      ])
+
       const contentEditManager =
-        documentViewer.getContentEditManager?.()
+        getContentEditManager(instance)
 
+      const handleContentBoxEditStarted = (...args: any[]) => {
+        const payload = args[0]
+
+        activeContentEditorRef.current =
+          payload?.editor ?? payload ?? null
+      }
+
+      const handleContentBoxEditEnded = () => {
+        activeContentEditorRef.current = null
+      }
+
+      contentEditManager?.addEventListener?.(
+        'contentBoxEditStarted',
+        handleContentBoxEditStarted,
+      )
+
+      contentEditManager?.addEventListener?.(
+        'contentBoxEditEnded',
+        handleContentBoxEditEnded,
+      )
+
+      documentViewer.addEventListener('documentLoaded', () => {
+        setCurrentPage(documentViewer.getCurrentPage())
+        setPageCount(documentViewer.getPageCount())
+
+        UI.setFitMode(UI.FitMode.FitWidth)
+      })
+
+      documentViewer.addEventListener(
+        'pageNumberUpdated',
+        (pageNumber) => {
+          setCurrentPage(pageNumber)
+        },
+      )
+
+      const webComponent =
+        viewerRef.current
+          ? getApryseWebComponent(viewerRef.current)
+          : null
+
+      console.log('Apryse iframe:', viewerRef.current?.querySelector('iframe'))
+      console.log('Apryse web component:', webComponent)
+      console.log('Apryse shadowRoot:', webComponent?.shadowRoot)
+    })
+
+    return () => {
+      disposed = true
+
+      instanceRef.current?.UI.dispose?.()
+      instanceRef.current = null
+      activeContentEditorRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const instance = instanceRef.current
+
+    if (!instance || !fileUrl) return
+
+    instance.UI.loadDocument(fileUrl, {
+      filename: fileUrl.split('/').pop() ?? 'document.pdf',
+    })
+  }, [fileUrl])
+
+  useEffect(() => {
+    const instance = instanceRef.current
+
+    if (!instance) return
+
+    const { UI, Core } = instance
+    const { documentViewer } = Core
+
+    const contentEditManager =
+      getContentEditManager(instance)
+
+    async function toggleContentEditMode() {
       if (isPdfEditing) {
-        console.log('On edit mode')
-
         UI.enableFeatures([UI.Feature.ContentEdit])
 
-        // Đúng theo docs Apryse
-        UI.setToolbarGroup(UI.ToolbarGroup.EDIT_TEXT)
+        await (Core as any).ContentEdit?.preloadWorker?.(
+          contentEditManager,
+        )
 
-        // Quan trọng: ép viewer vào content edit mode
-        contentEditManager?.startContentEditMode?.()
+        const editTextToolbarGroup =
+          (UI.ToolbarGroup as any).EDIT_TEXT ??
+          (UI.ToolbarGroup as any).EDIT
+
+        UI.setToolbarGroup(editTextToolbarGroup)
+
+        await contentEditManager?.startContentEditMode?.()
+
+        await waitFrame()
+        await waitFrame()
+        await wait(300)
       } else {
-        console.log('Off edit mode')
+        activeContentEditorRef.current = null
 
-        contentEditManager?.endContentEditMode?.()
+        await endContentEditMode(instance)
       }
-    }, [isPdfEditing])
+    }
 
-    useImperativeHandle(ref, () => ({
-      async exportEditedPdf() {
-        const instance = instanceRef.current;
-        if (!instance) return null;
+    toggleContentEditMode().catch((error) => {
+      console.error('Toggle content edit mode failed:', error)
+    })
+  }, [isPdfEditing])
 
-        await instance.Core.contentEditManager?.endContentEditMode?.();
+  const goToPage = (page: number) => {
+    const instance = instanceRef.current
 
-        const doc = instance.Core.documentViewer.getDocument();
+    if (!instance) return
 
-        const fileData = await doc.getFileData({
-          downloadType: 'pdf',
-        })
+    const safePage = Math.min(Math.max(page, 1), pageCount)
 
-        return new Blob([new Uint8Array(fileData)], {
-          type: 'application/pdf',
-        })
-      },
-    }))
-
-    return (
-      <div className="flex h-[calc(100vh-230px)] min-h-[70px] flex-col bg-stone-100">
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <div ref={viewerRef} className="h-full w-full" />
-        </div>
-
-        <PdfPageControls
-          currentPage={currentPage}
-          pageCount={pageCount}
-          onGoToPage={goToPage}
-        />
-      </div>
-    )
+    instance.Core.documentViewer.setCurrentPage(safePage)
+    setCurrentPage(safePage)
   }
-)
+
+  useImperativeHandle(ref, () => ({
+    async exportEditedPdf() {
+      const instance = instanceRef.current
+      const viewerElement = viewerRef.current
+
+      if (!instance || !viewerElement) return null
+
+      const { documentViewer } = instance.Core
+
+      /**
+       * 1. Thử blur editor Apryse đang active nếu event bắt được editor.
+       */
+      try {
+        await activeContentEditorRef.current?.blur?.()
+      } catch (error) {
+        console.warn('Failed to blur active content editor:', error)
+      }
+
+      await waitFrame()
+      await waitFrame()
+      await wait(150)
+
+      /**
+       * 2. Thử stop tất cả ContentBox lấy từ placeholder annotations.
+       */
+      await stopAllContentBoxEditing(instance)
+
+      /**
+       * 3. Vì app đang dùng Web Component, click vào shadowRoot,
+       * không query iframe nữa.
+       */
+      await clickInsideApryseShadowRoot(viewerElement)
+
+      /**
+       * 4. Sau khi click outside, stop lại lần nữa để bắt state mới nhất.
+       */
+      await stopAllContentBoxEditing(instance)
+
+      /**
+       * 5. Đóng Content Edit mode rồi export PDF.
+       */
+      await endContentEditMode(instance)
+
+      documentViewer.refreshAll?.()
+      documentViewer.updateView?.()
+
+      await waitFrame()
+      await waitFrame()
+      await wait(300)
+
+      const doc = documentViewer.getDocument()
+
+      if (!doc) return null
+
+      const fileData = await doc.getFileData({
+        downloadType: 'pdf',
+      })
+
+      return new Blob([new Uint8Array(fileData)], {
+        type: 'application/pdf',
+      })
+    },
+
+    reloadOriginalPdf() {
+      const instance = instanceRef.current
+
+      if (!instance || !fileUrl) return
+
+      activeContentEditorRef.current = null
+
+      instance.UI.loadDocument(fileUrl, {
+        filename: fileUrl.split('/').pop() ?? 'document.pdf',
+      })
+    },
+  }))
+
+  return (
+    <div className="flex h-[calc(100vh-230px)] min-h-[70px] flex-col bg-stone-100">
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <div ref={viewerRef} className="h-full w-full" />
+      </div>
+
+      <PdfPageControls
+        currentPage={currentPage}
+        pageCount={pageCount}
+        onGoToPage={goToPage}
+      />
+    </div>
+  )
+})
