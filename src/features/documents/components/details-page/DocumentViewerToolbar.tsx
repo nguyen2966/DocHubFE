@@ -21,6 +21,8 @@ interface DocumentViewerToolbarProps {
   onStartEditPdf: () => void
   onCancelEditPdf: () => void
   onSavePdf: () => void
+  commentsOpen?: boolean
+  onOpenComments?: () => void
 }
 
 export function DocumentViewerToolbar({
@@ -31,8 +33,9 @@ export function DocumentViewerToolbar({
   onCancelEditPdf,
   onSavePdf,
   isSavingPdf,
+  onOpenComments,
+  commentsOpen,
 }: DocumentViewerToolbarProps) {
-  const [commentsOpen, setCommentsOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
 
   return (
@@ -73,11 +76,17 @@ export function DocumentViewerToolbar({
         {canCommentDocument(document) && !isPdfEditing && (
           <button
             type="button"
-            onClick={() => setCommentsOpen(true)}
-            className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium hover:bg-stone-50"
+            onClick={onOpenComments}
+            className={`
+            inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition
+            ${commentsOpen
+                      ? 'border-stone-950 bg-stone-950 text-white'
+                      : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
+                    }
+          `}
           >
             <ChatText size={16} />
-            Comment
+            Comments
           </button>
         )}
 
@@ -93,24 +102,7 @@ export function DocumentViewerToolbar({
         )}
       </div>
 
-      {commentsOpen && (
-        <div className="fixed right-0 top-0 z-50 h-screen w-[360px] border-l border-stone-200 bg-white p-5 shadow-xl">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Comments</h2>
-
-            <button
-              onClick={() => setCommentsOpen(false)}
-              className="text-sm text-stone-500"
-            >
-              Close
-            </button>
-          </div>
-
-          <p className="text-sm text-stone-500">
-            Comment panel will be integrated later.
-          </p>
-        </div>
-      )}
+    
 
       <ShareDocumentModal
         open={shareOpen}

@@ -1,26 +1,45 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { documentService } from '../service/document.service';
 import type { Document } from '../types/document.type';
+import type { EditedRect } from '../../comments/types/comment.type'
+import { commentThreadKeys } from '../../comments/hooks/comment-query-keys'
 
 interface EditPdfPayload {
   documentId: string
   file: Blob
+  editedRects?: EditedRect[]
+  degradedAnnotationIds?: string[]
 }
 
 export const useEditPdf = (workspaceId: string) => {
   const queryClient = useQueryClient()
 
   return useMutation<Document, Error, EditPdfPayload>({
-    mutationFn: ({ documentId, file }) =>
-      documentService.editPdf(workspaceId, documentId, file),
+    mutationFn: ({
+      documentId,
+      file,
+      editedRects = [],
+      degradedAnnotationIds = [],
+    }) =>
+      documentService.editPdf(
+        workspaceId,
+        documentId,
+        file,
+        editedRects,
+        degradedAnnotationIds,
+      ),
 
-    onSuccess: (updatedDocument) => {
+    onSuccess: (updatedDocument, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['documents', workspaceId],
       })
 
       queryClient.invalidateQueries({
         queryKey: ['document-detail', workspaceId, updatedDocument._id],
+      })
+
+      queryClient.invalidateQueries({
+        queryKey: commentThreadKeys.list(workspaceId, variables.documentId),
       })
     },
   })

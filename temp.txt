@@ -1,0 +1,2385 @@
+[
+    {
+        "at": "2026-06-17T07:31:58.940Z",
+        "label": "webviewer-ready",
+        "data": {
+            "fileUrl": "http://localhost:3000/storage/documents/6a2f888d0204fab9effb8d27/6a2fd0212e1debaf1288b759/6a2fd7f971d6ab275d1d873a.pdf",
+            "hasContentEditManager": true,
+            "annotations": []
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:00.835Z",
+        "label": "documentLoaded",
+        "data": {
+            "currentPage": 1,
+            "pageCount": 1,
+            "annotationsBeforeRender": []
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:00.835Z",
+        "label": "renderCommentThreads-start",
+        "data": {
+            "threadCount": 1,
+            "allAnnotationsBeforeDelete": [],
+            "existingCommentAnchorsToDelete": []
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:00.835Z",
+        "label": "renderCommentThreads-after-delete",
+        "data": {
+            "annotationsAfterDelete": []
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:00.837Z",
+        "label": "renderCommentThreads-created-point-marker",
+        "data": {
+            "annotationId": "6a312496611947f0cff99315",
+            "visualState": "point",
+            "hasXfdf": false,
+            "annotations": [
+                {
+                    "id": "48abf757-9257-a549-7011-f566fd1d6b6d",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:00.838Z",
+        "label": "documentLoaded-after-renderCommentThreads",
+        "data": {
+            "threadCount": 1,
+            "annotationsAfterRender": [
+                {
+                    "id": "48abf757-9257-a549-7011-f566fd1d6b6d",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:06.871Z",
+        "label": "contentEditMode-enter-start",
+        "data": {
+            "hasContentEditManager": true,
+            "editedRectsAfterReset": [],
+            "annotations": [
+                {
+                    "id": "48abf757-9257-a549-7011-f566fd1d6b6d",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:07.859Z",
+        "label": "contentEditMode-enter-finished",
+        "data": {
+            "currentPage": 1,
+            "hasContentEditManager": true,
+            "editedRects": [],
+            "annotations": [
+                {
+                    "id": "48abf757-9257-a549-7011-f566fd1d6b6d",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:10.201Z",
+        "label": "contentBoxEditStarted",
+        "data": {
+            "payload": {
+                "payloadKeys": {
+                    "ownKeys": [
+                        "editor",
+                        "ra"
+                    ],
+                    "prototypeKeys": [
+                        "constructor",
+                        "__defineGetter__",
+                        "__defineSetter__",
+                        "hasOwnProperty",
+                        "__lookupGetter__",
+                        "__lookupSetter__",
+                        "isPrototypeOf",
+                        "propertyIsEnumerable",
+                        "toString",
+                        "valueOf",
+                        "__proto__",
+                        "toLocaleString"
+                    ]
+                },
+                "extractedRect": {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 135.51
+                },
+                "payload": {
+                    "keys": {
+                        "ownKeys": [
+                            "editor",
+                            "ra"
+                        ],
+                        "prototypeKeys": [
+                            "constructor",
+                            "__defineGetter__",
+                            "__defineSetter__",
+                            "hasOwnProperty",
+                            "__lookupGetter__",
+                            "__lookupSetter__",
+                            "isPrototypeOf",
+                            "propertyIsEnumerable",
+                            "toString",
+                            "valueOf",
+                            "__proto__",
+                            "toLocaleString"
+                        ]
+                    },
+                    "pageNumber": null,
+                    "pageIndex": null,
+                    "rect": null,
+                    "x": null,
+                    "y": null,
+                    "width": null,
+                    "height": null
+                },
+                "editor": {
+                    "keys": {
+                        "ownKeys": [
+                            "du",
+                            "gr",
+                            "Gba",
+                            "YW",
+                            "MX",
+                            "NX",
+                            "VF",
+                            "WF",
+                            "tX",
+                            "Vm",
+                            "uX",
+                            "nN",
+                            "LX",
+                            "JR",
+                            "FR"
+                        ],
+                        "prototypeKeys": [
+                            "constructor",
+                            "TEa",
+                            "HR",
+                            "UI",
+                            "JR",
+                            "FR",
+                            "aTa",
+                            "z$a",
+                            "P2a",
+                            "c8a",
+                            "d8a",
+                            "o5a",
+                            "iJ",
+                            "yO",
+                            "$da",
+                            "Aga",
+                            "attributePromiseCapablilty",
+                            "t7",
+                            "G0",
+                            "s7",
+                            "CTa",
+                            "FWa",
+                            "S3",
+                            "HIa",
+                            "hyperlink",
+                            "blur",
+                            "wbb",
+                            "tcb",
+                            "ypa",
+                            "f5a",
+                            "destroy",
+                            "getTextAttributes",
+                            "loadHyperLinkURL",
+                            "insertHyperlink",
+                            "getCurrentSelection"
+                        ]
+                    },
+                    "pageNumber": null,
+                    "pageIndex": null,
+                    "rect": null,
+                    "x": null,
+                    "y": null,
+                    "width": null,
+                    "height": null
+                },
+                "ra": {
+                    "keys": {
+                        "ownKeys": [
+                            "VB",
+                            "Bja",
+                            "nA",
+                            "oA",
+                            "sX",
+                            "types",
+                            "Subject",
+                            "RW",
+                            "NM",
+                            "OM",
+                            "NF",
+                            "MF",
+                            "Rotation",
+                            "Mf",
+                            "OW",
+                            "JM",
+                            "L$",
+                            "M$",
+                            "Rm",
+                            "KF",
+                            "D$",
+                            "NW",
+                            "LF",
+                            "E$",
+                            "HM",
+                            "JA",
+                            "IA",
+                            "O$",
+                            "Tm",
+                            "eaa",
+                            "gX",
+                            "gr",
+                            "yX",
+                            "Ow",
+                            "eba",
+                            "Hba",
+                            "Sba",
+                            "OF",
+                            "cn",
+                            "he",
+                            "VK",
+                            "uT",
+                            "Ew",
+                            "H$",
+                            "Q$",
+                            "PW",
+                            "I$",
+                            "N$",
+                            "P$",
+                            "J$",
+                            "K$",
+                            "Z$",
+                            "Rb",
+                            "Ko",
+                            "ul",
+                            "V$",
+                            "C$",
+                            "UF",
+                            "Eba",
+                            "YBa",
+                            "uaa",
+                            "FN",
+                            "_xsi:type",
+                            "fringe",
+                            "Tt",
+                            "jg",
+                            "Lza",
+                            "selectionModel",
+                            "isImporting",
+                            "ToolName"
+                        ],
+                        "prototypeKeys": [
+                            "constructor",
+                            "resize",
+                            "draw",
+                            "ZOa",
+                            "es",
+                            "Mu",
+                            "dC",
+                            "CK",
+                            "PP",
+                            "RP",
+                            "getRectPadding",
+                            "rotate",
+                            "Re",
+                            "t0",
+                            "Q6",
+                            "Hn",
+                            "mo",
+                            "serialize",
+                            "deserialize",
+                            "elementName",
+                            "V$",
+                            "C$",
+                            "gD",
+                            "Style",
+                            "Dashes",
+                            "Intensity",
+                            "getBorderStyle",
+                            "setBorderStyle",
+                            "getCloudIntensity",
+                            "setCloudIntensity",
+                            "getMeasurementTextWithScaleAndUnits"
+                        ]
+                    },
+                    "pageNumber": 1,
+                    "pageIndex": null,
+                    "rect": {
+                        "keys": {
+                            "ownKeys": [
+                                "x1",
+                                "y1",
+                                "x2",
+                                "y2"
+                            ],
+                            "prototypeKeys": [
+                                "constructor",
+                                "Eb",
+                                "Fb",
+                                "ty",
+                                "zy",
+                                "Fy",
+                                "Tr",
+                                "pa",
+                                "na",
+                                "Ip",
+                                "OI",
+                                "K1",
+                                "u0",
+                                "zQ",
+                                "translate",
+                                "wj",
+                                "normalize",
+                                "b0",
+                                "join",
+                                "gy",
+                                "isEqual",
+                                "aQ",
+                                "kla",
+                                "wXa",
+                                "lD",
+                                "contains",
+                                "transform",
+                                "Hsa",
+                                "getWidth",
+                                "getHeight",
+                                "fitTo",
+                                "exportNormalize",
+                                "getX",
+                                "getY",
+                                "getLeft",
+                                "getRight",
+                                "getTop",
+                                "getBottom",
+                                "getCenter",
+                                "getTopLeft",
+                                "getTopRight",
+                                "getBottomLeft",
+                                "getBottomRight",
+                                "equalTo",
+                                "intersects",
+                                "toQuad"
+                            ]
+                        },
+                        "x1": 92.25,
+                        "y1": 87,
+                        "x2": 351.23,
+                        "y2": 135.51,
+                        "width": 258.98,
+                        "height": 48.50999999999999
+                    },
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 48.50999999999999
+                }
+            },
+            "editedRectsAfter": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 135.51
+                }
+            ],
+            "annotations": [
+                {
+                    "id": "48abf757-9257-a549-7011-f566fd1d6b6d",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "ca6cc271-125e-253b-5237-4b0531d70edd",
+                    "subject": "Rectangle",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 48.50999999999999,
+                    "isCommentAnchor": false,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:25.095Z",
+        "label": "exportEditedPdf-start",
+        "data": {
+            "editedRectsAtStart": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 135.51
+                }
+            ],
+            "hasActiveContentEditor": true,
+            "annotationsAtStart": [
+                {
+                    "id": "48abf757-9257-a549-7011-f566fd1d6b6d",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "ca6cc271-125e-253b-5237-4b0531d70edd",
+                    "subject": "Rectangle",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 107.00599999999997,
+                    "isCommentAnchor": false,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:25.250Z",
+        "label": "exportEditedPdf-after-blur",
+        "data": {
+            "editedRectsAfterBlur": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 135.51
+                }
+            ],
+            "annotationsAfterBlur": [
+                {
+                    "id": "48abf757-9257-a549-7011-f566fd1d6b6d",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "ca6cc271-125e-253b-5237-4b0531d70edd",
+                    "subject": "Rectangle",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 107.00599999999997,
+                    "isCommentAnchor": false,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:25.582Z",
+        "label": "exportEditedPdf-after-stopContentBoxEditing-1",
+        "data": {
+            "editedRects": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 135.51
+                }
+            ],
+            "annotations": [
+                {
+                    "id": "48abf757-9257-a549-7011-f566fd1d6b6d",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "ca6cc271-125e-253b-5237-4b0531d70edd",
+                    "subject": "Rectangle",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 107.00599999999997,
+                    "isCommentAnchor": false,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:25.674Z",
+        "label": "contentBoxEditEnded",
+        "data": {
+            "payload": {
+                "payloadKeys": null,
+                "extractedRect": null,
+                "payload": null,
+                "editor": null,
+                "ra": null
+            },
+            "editedRectsBeforeClearActiveEditor": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 135.51
+                }
+            ],
+            "annotations": [
+                {
+                    "id": "48abf757-9257-a549-7011-f566fd1d6b6d",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "ca6cc271-125e-253b-5237-4b0531d70edd",
+                    "subject": "Rectangle",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 107.00599999999997,
+                    "isCommentAnchor": false,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:25.907Z",
+        "label": "exportEditedPdf-after-shadow-click",
+        "data": {
+            "editedRects": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 135.51
+                }
+            ],
+            "annotations": [
+                {
+                    "id": "48abf757-9257-a549-7011-f566fd1d6b6d",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "ca6cc271-125e-253b-5237-4b0531d70edd",
+                    "subject": "Rectangle",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 107.00599999999997,
+                    "isCommentAnchor": false,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:26.213Z",
+        "label": "exportEditedPdf-after-stopContentBoxEditing-2",
+        "data": {
+            "editedRects": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 135.51
+                }
+            ],
+            "annotations": [
+                {
+                    "id": "48abf757-9257-a549-7011-f566fd1d6b6d",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "ca6cc271-125e-253b-5237-4b0531d70edd",
+                    "subject": "Rectangle",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 107.00599999999997,
+                    "isCommentAnchor": false,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:26.546Z",
+        "label": "exportEditedPdf-after-endContentEditMode",
+        "data": {
+            "editedRects": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 135.51
+                }
+            ],
+            "annotations": [
+                {
+                    "id": "48abf757-9257-a549-7011-f566fd1d6b6d",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:26.872Z",
+        "label": "exportEditedPdf-finished",
+        "data": {
+            "editedRects": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 135.51
+                }
+            ],
+            "fileSize": 36000,
+            "annotationsAtFinish": [
+                {
+                    "id": "48abf757-9257-a549-7011-f566fd1d6b6d",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:27.205Z",
+        "label": "contentEditMode-exit-start",
+        "data": {
+            "editedRectsBeforeExit": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 135.51
+                }
+            ],
+            "annotations": [
+                {
+                    "id": "48abf757-9257-a549-7011-f566fd1d6b6d",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:27.522Z",
+        "label": "contentEditMode-exit-finished",
+        "data": {
+            "editedRectsAfterExit": [],
+            "annotations": []
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:30.233Z",
+        "label": "webviewer-ready",
+        "data": {
+            "fileUrl": "http://localhost:3000/storage/documents/6a2f888d0204fab9effb8d27/6a2fd0212e1debaf1288b759/6a2fd7f971d6ab275d1d873a.pdf",
+            "hasContentEditManager": true,
+            "annotations": []
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:30.726Z",
+        "label": "documentLoaded",
+        "data": {
+            "currentPage": 1,
+            "pageCount": 1,
+            "annotationsBeforeRender": []
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:30.726Z",
+        "label": "renderCommentThreads-start",
+        "data": {
+            "threadCount": 1,
+            "allAnnotationsBeforeDelete": [],
+            "existingCommentAnchorsToDelete": []
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:30.726Z",
+        "label": "renderCommentThreads-after-delete",
+        "data": {
+            "annotationsAfterDelete": []
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:30.728Z",
+        "label": "renderCommentThreads-created-point-marker",
+        "data": {
+            "annotationId": "6a312496611947f0cff99315",
+            "visualState": "point",
+            "hasXfdf": false,
+            "annotations": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:30.731Z",
+        "label": "documentLoaded-after-renderCommentThreads",
+        "data": {
+            "threadCount": 1,
+            "annotationsAfterRender": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:39.428Z",
+        "label": "pendingCommentAnchor-created",
+        "data": {
+            "selection": {
+                "quads": [
+                    {
+                        "x1": 92.25,
+                        "y1": 145.98749999999995,
+                        "x2": 178.30349999999999,
+                        "y2": 145.98749999999995,
+                        "x3": 178.30349999999999,
+                        "y3": 135.31124999999997,
+                        "x4": 92.25,
+                        "y4": 135.31124999999997
+                    }
+                ],
+                "text": "This is controversial",
+                "pageNumber": 1,
+                "position": {
+                    "x": 405.2352272727273,
+                    "y": 307.52556818181813
+                },
+                "clientPosition": {
+                    "x": 422.2352272727273,
+                    "y": 316.52556818181813
+                }
+            },
+            "bounds": {
+                "minX": 92.25,
+                "minY": 135.31124999999997,
+                "maxX": 178.30349999999999,
+                "maxY": 145.98749999999995
+            },
+            "temporaryAnchor": {
+                "id": "913f9599-376c-6509-db68-03b6428de13f",
+                "subject": "Comment",
+                "pageNumber": 1,
+                "x": 92.25,
+                "y": 135.31124999999997,
+                "width": 86.05349999999999,
+                "height": 10.676249999999982,
+                "isCommentAnchor": true,
+                "isTemporaryCommentAnchor": true,
+                "threadId": null
+            },
+            "annotations": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 135.31124999999997,
+                    "width": 86.05349999999999,
+                    "height": 10.676249999999982,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:39.430Z",
+        "label": "pendingCommentAnchor-xfdf-exported",
+        "data": {
+            "temporaryAnchorId": "913f9599-376c-6509-db68-03b6428de13f",
+            "xfdfLength": 727,
+            "includesTemporaryFlag": true,
+            "includesCommentAnchorType": true
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:52.182Z",
+        "label": "renderCommentThreads-start",
+        "data": {
+            "threadCount": 2,
+            "allAnnotationsBeforeDelete": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 135.31124999999997,
+                    "width": 86.05349999999999,
+                    "height": 10.676249999999982,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": null
+                }
+            ],
+            "existingCommentAnchorsToDelete": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:52.182Z",
+        "label": "renderCommentThreads-after-delete",
+        "data": {
+            "annotationsAfterDelete": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 135.31124999999997,
+                    "width": 86.05349999999999,
+                    "height": 10.676249999999982,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:52.190Z",
+        "label": "renderCommentThreads-start",
+        "data": {
+            "threadCount": 2,
+            "allAnnotationsBeforeDelete": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 135.31099999999992,
+                    "width": 86.054,
+                    "height": 10.676000000000045,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": null
+                }
+            ],
+            "existingCommentAnchorsToDelete": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:52.190Z",
+        "label": "renderCommentThreads-after-delete",
+        "data": {
+            "annotationsAfterDelete": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 135.31099999999992,
+                    "width": 86.054,
+                    "height": 10.676000000000045,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:52.197Z",
+        "label": "renderCommentThreads-imported-highlight",
+        "data": {
+            "annotationId": "6a324da30ba06ff451701f2f",
+            "importedAnnotation": {
+                "id": "913f9599-376c-6509-db68-03b6428de13f",
+                "subject": "Comment",
+                "pageNumber": 1,
+                "x": 92.25,
+                "y": 135.31099999999992,
+                "width": 86.054,
+                "height": 10.676000000000045,
+                "isCommentAnchor": true,
+                "isTemporaryCommentAnchor": true,
+                "threadId": "6a324da30ba06ff451701f2f"
+            },
+            "xfdfIncludesTemporaryFlag": true
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:52.199Z",
+        "label": "renderCommentThreads-imported-highlight",
+        "data": {
+            "annotationId": "6a324da30ba06ff451701f2f",
+            "importedAnnotation": {
+                "id": "913f9599-376c-6509-db68-03b6428de13f",
+                "subject": "Comment",
+                "pageNumber": 1,
+                "x": 92.25,
+                "y": 135.31099999999992,
+                "width": 86.054,
+                "height": 10.676000000000045,
+                "isCommentAnchor": true,
+                "isTemporaryCommentAnchor": true,
+                "threadId": "6a324da30ba06ff451701f2f"
+            },
+            "xfdfIncludesTemporaryFlag": true
+        }
+    },
+    {
+        "at": "2026-06-17T07:32:52.202Z",
+        "label": "renderCommentThreads-created-point-marker",
+        "data": {
+            "annotationId": "6a312496611947f0cff99315",
+            "visualState": "point",
+            "hasXfdf": false,
+            "annotations": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 135.31099999999992,
+                    "width": 86.054,
+                    "height": 10.676000000000045,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": "6a324da30ba06ff451701f2f"
+                },
+                {
+                    "id": "a4b36f60-eef0-ef76-4ac8-73b923e1716f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:10.681Z",
+        "label": "contentEditMode-enter-start",
+        "data": {
+            "hasContentEditManager": true,
+            "editedRectsAfterReset": [],
+            "annotations": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 135.31099999999992,
+                    "width": 86.054,
+                    "height": 10.676000000000045,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": "6a324da30ba06ff451701f2f"
+                },
+                {
+                    "id": "a4b36f60-eef0-ef76-4ac8-73b923e1716f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:11.044Z",
+        "label": "contentEditMode-enter-finished",
+        "data": {
+            "currentPage": 1,
+            "hasContentEditManager": true,
+            "editedRects": [],
+            "annotations": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 135.31099999999992,
+                    "width": 86.054,
+                    "height": 10.676000000000045,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": "6a324da30ba06ff451701f2f"
+                },
+                {
+                    "id": "a4b36f60-eef0-ef76-4ac8-73b923e1716f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "dfddaeec-daac-865d-c125-661131d9cdc8",
+                    "subject": "Rectangle",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 107.00999999999999,
+                    "isCommentAnchor": false,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:11.768Z",
+        "label": "contentBoxEditStarted",
+        "data": {
+            "payload": {
+                "payloadKeys": {
+                    "ownKeys": [
+                        "editor",
+                        "ra"
+                    ],
+                    "prototypeKeys": [
+                        "constructor",
+                        "__defineGetter__",
+                        "__defineSetter__",
+                        "hasOwnProperty",
+                        "__lookupGetter__",
+                        "__lookupSetter__",
+                        "isPrototypeOf",
+                        "propertyIsEnumerable",
+                        "toString",
+                        "valueOf",
+                        "__proto__",
+                        "toLocaleString"
+                    ]
+                },
+                "extractedRect": {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 194.01
+                },
+                "payload": {
+                    "keys": {
+                        "ownKeys": [
+                            "editor",
+                            "ra"
+                        ],
+                        "prototypeKeys": [
+                            "constructor",
+                            "__defineGetter__",
+                            "__defineSetter__",
+                            "hasOwnProperty",
+                            "__lookupGetter__",
+                            "__lookupSetter__",
+                            "isPrototypeOf",
+                            "propertyIsEnumerable",
+                            "toString",
+                            "valueOf",
+                            "__proto__",
+                            "toLocaleString"
+                        ]
+                    },
+                    "pageNumber": null,
+                    "pageIndex": null,
+                    "rect": null,
+                    "x": null,
+                    "y": null,
+                    "width": null,
+                    "height": null
+                },
+                "editor": {
+                    "keys": {
+                        "ownKeys": [
+                            "du",
+                            "gr",
+                            "Gba",
+                            "YW",
+                            "MX",
+                            "NX",
+                            "VF",
+                            "WF",
+                            "tX",
+                            "Vm",
+                            "uX",
+                            "nN",
+                            "LX",
+                            "JR",
+                            "FR"
+                        ],
+                        "prototypeKeys": [
+                            "constructor",
+                            "TEa",
+                            "HR",
+                            "UI",
+                            "JR",
+                            "FR",
+                            "aTa",
+                            "z$a",
+                            "P2a",
+                            "c8a",
+                            "d8a",
+                            "o5a",
+                            "iJ",
+                            "yO",
+                            "$da",
+                            "Aga",
+                            "attributePromiseCapablilty",
+                            "t7",
+                            "G0",
+                            "s7",
+                            "CTa",
+                            "FWa",
+                            "S3",
+                            "HIa",
+                            "hyperlink",
+                            "blur",
+                            "wbb",
+                            "tcb",
+                            "ypa",
+                            "f5a",
+                            "destroy",
+                            "getTextAttributes",
+                            "loadHyperLinkURL",
+                            "insertHyperlink",
+                            "getCurrentSelection"
+                        ]
+                    },
+                    "pageNumber": null,
+                    "pageIndex": null,
+                    "rect": null,
+                    "x": null,
+                    "y": null,
+                    "width": null,
+                    "height": null
+                },
+                "ra": {
+                    "keys": {
+                        "ownKeys": [
+                            "VB",
+                            "Bja",
+                            "nA",
+                            "oA",
+                            "sX",
+                            "types",
+                            "Subject",
+                            "RW",
+                            "NM",
+                            "OM",
+                            "NF",
+                            "MF",
+                            "Rotation",
+                            "Mf",
+                            "OW",
+                            "JM",
+                            "L$",
+                            "M$",
+                            "Rm",
+                            "KF",
+                            "D$",
+                            "NW",
+                            "LF",
+                            "E$",
+                            "HM",
+                            "JA",
+                            "IA",
+                            "O$",
+                            "Tm",
+                            "eaa",
+                            "gX",
+                            "gr",
+                            "yX",
+                            "Ow",
+                            "eba",
+                            "Hba",
+                            "Sba",
+                            "OF",
+                            "cn",
+                            "he",
+                            "VK",
+                            "uT",
+                            "Ew",
+                            "H$",
+                            "Q$",
+                            "PW",
+                            "I$",
+                            "N$",
+                            "P$",
+                            "J$",
+                            "K$",
+                            "Z$",
+                            "Rb",
+                            "Ko",
+                            "ul",
+                            "V$",
+                            "C$",
+                            "UF",
+                            "Eba",
+                            "YBa",
+                            "uaa",
+                            "FN",
+                            "_xsi:type",
+                            "fringe",
+                            "Tt",
+                            "jg",
+                            "Lza",
+                            "selectionModel",
+                            "isImporting",
+                            "ToolName"
+                        ],
+                        "prototypeKeys": [
+                            "constructor",
+                            "resize",
+                            "draw",
+                            "ZOa",
+                            "es",
+                            "Mu",
+                            "dC",
+                            "CK",
+                            "PP",
+                            "RP",
+                            "getRectPadding",
+                            "rotate",
+                            "Re",
+                            "t0",
+                            "Q6",
+                            "Hn",
+                            "mo",
+                            "serialize",
+                            "deserialize",
+                            "elementName",
+                            "V$",
+                            "C$",
+                            "gD",
+                            "Style",
+                            "Dashes",
+                            "Intensity",
+                            "getBorderStyle",
+                            "setBorderStyle",
+                            "getCloudIntensity",
+                            "setCloudIntensity",
+                            "getMeasurementTextWithScaleAndUnits"
+                        ]
+                    },
+                    "pageNumber": 1,
+                    "pageIndex": null,
+                    "rect": {
+                        "keys": {
+                            "ownKeys": [
+                                "x1",
+                                "y1",
+                                "x2",
+                                "y2"
+                            ],
+                            "prototypeKeys": [
+                                "constructor",
+                                "Eb",
+                                "Fb",
+                                "ty",
+                                "zy",
+                                "Fy",
+                                "Tr",
+                                "pa",
+                                "na",
+                                "Ip",
+                                "OI",
+                                "K1",
+                                "u0",
+                                "zQ",
+                                "translate",
+                                "wj",
+                                "normalize",
+                                "b0",
+                                "join",
+                                "gy",
+                                "isEqual",
+                                "aQ",
+                                "kla",
+                                "wXa",
+                                "lD",
+                                "contains",
+                                "transform",
+                                "Hsa",
+                                "getWidth",
+                                "getHeight",
+                                "fitTo",
+                                "exportNormalize",
+                                "getX",
+                                "getY",
+                                "getLeft",
+                                "getRight",
+                                "getTop",
+                                "getBottom",
+                                "getCenter",
+                                "getTopLeft",
+                                "getTopRight",
+                                "getBottomLeft",
+                                "getBottomRight",
+                                "equalTo",
+                                "intersects",
+                                "toQuad"
+                            ]
+                        },
+                        "x1": 92.25,
+                        "y1": 87,
+                        "x2": 351.23,
+                        "y2": 194.01,
+                        "width": 258.98,
+                        "height": 107.00999999999999
+                    },
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 107.00999999999999
+                }
+            },
+            "editedRectsAfter": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 194.01
+                }
+            ],
+            "annotations": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 135.31099999999992,
+                    "width": 86.054,
+                    "height": 10.676000000000045,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": "6a324da30ba06ff451701f2f"
+                },
+                {
+                    "id": "a4b36f60-eef0-ef76-4ac8-73b923e1716f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "dfddaeec-daac-865d-c125-661131d9cdc8",
+                    "subject": "Rectangle",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 107.00999999999999,
+                    "isCommentAnchor": false,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:20.256Z",
+        "label": "exportEditedPdf-start",
+        "data": {
+            "editedRectsAtStart": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 194.01
+                }
+            ],
+            "hasActiveContentEditor": true,
+            "annotationsAtStart": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 135.31099999999992,
+                    "width": 86.054,
+                    "height": 10.676000000000045,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": "6a324da30ba06ff451701f2f"
+                },
+                {
+                    "id": "a4b36f60-eef0-ef76-4ac8-73b923e1716f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "dfddaeec-daac-865d-c125-661131d9cdc8",
+                    "subject": "Rectangle",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 107.00999999999999,
+                    "isCommentAnchor": false,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:20.425Z",
+        "label": "exportEditedPdf-after-blur",
+        "data": {
+            "editedRectsAfterBlur": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 194.01
+                }
+            ],
+            "annotationsAfterBlur": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 135.31099999999992,
+                    "width": 86.054,
+                    "height": 10.676000000000045,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": "6a324da30ba06ff451701f2f"
+                },
+                {
+                    "id": "a4b36f60-eef0-ef76-4ac8-73b923e1716f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "dfddaeec-daac-865d-c125-661131d9cdc8",
+                    "subject": "Rectangle",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 107.00999999999999,
+                    "isCommentAnchor": false,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:20.670Z",
+        "label": "contentBoxEditEnded",
+        "data": {
+            "payload": {
+                "payloadKeys": null,
+                "extractedRect": null,
+                "payload": null,
+                "editor": null,
+                "ra": null
+            },
+            "editedRectsBeforeClearActiveEditor": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 194.01
+                }
+            ],
+            "annotations": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 133.78999999999996,
+                    "width": 183.007,
+                    "height": 12.187999999999988,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": "6a324da30ba06ff451701f2f"
+                },
+                {
+                    "id": "a4b36f60-eef0-ef76-4ac8-73b923e1716f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "dfddaeec-daac-865d-c125-661131d9cdc8",
+                    "subject": "Rectangle",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 107.00999999999999,
+                    "isCommentAnchor": false,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:20.762Z",
+        "label": "exportEditedPdf-after-stopContentBoxEditing-1",
+        "data": {
+            "editedRects": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 194.01
+                }
+            ],
+            "annotations": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 133.78999999999996,
+                    "width": 183.007,
+                    "height": 12.187999999999988,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": "6a324da30ba06ff451701f2f"
+                },
+                {
+                    "id": "a4b36f60-eef0-ef76-4ac8-73b923e1716f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "dfddaeec-daac-865d-c125-661131d9cdc8",
+                    "subject": "Rectangle",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 107.00999999999999,
+                    "isCommentAnchor": false,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:21.089Z",
+        "label": "exportEditedPdf-after-shadow-click",
+        "data": {
+            "editedRects": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 194.01
+                }
+            ],
+            "annotations": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 133.78999999999996,
+                    "width": 183.007,
+                    "height": 12.187999999999988,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": "6a324da30ba06ff451701f2f"
+                },
+                {
+                    "id": "a4b36f60-eef0-ef76-4ac8-73b923e1716f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "dfddaeec-daac-865d-c125-661131d9cdc8",
+                    "subject": "Rectangle",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 107.00999999999999,
+                    "isCommentAnchor": false,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:21.398Z",
+        "label": "exportEditedPdf-after-stopContentBoxEditing-2",
+        "data": {
+            "editedRects": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 194.01
+                }
+            ],
+            "annotations": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 133.78999999999996,
+                    "width": 183.007,
+                    "height": 12.187999999999988,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": "6a324da30ba06ff451701f2f"
+                },
+                {
+                    "id": "a4b36f60-eef0-ef76-4ac8-73b923e1716f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "dfddaeec-daac-865d-c125-661131d9cdc8",
+                    "subject": "Rectangle",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 87,
+                    "width": 258.98,
+                    "height": 107.00999999999999,
+                    "isCommentAnchor": false,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": null
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:21.724Z",
+        "label": "exportEditedPdf-after-endContentEditMode",
+        "data": {
+            "editedRects": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 194.01
+                }
+            ],
+            "annotations": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 133.78999999999996,
+                    "width": 183.007,
+                    "height": 12.187999999999988,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": "6a324da30ba06ff451701f2f"
+                },
+                {
+                    "id": "a4b36f60-eef0-ef76-4ac8-73b923e1716f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:22.047Z",
+        "label": "exportEditedPdf-finished",
+        "data": {
+            "editedRects": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 194.01
+                }
+            ],
+            "fileSize": 36719,
+            "annotationsAtFinish": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 133.78999999999996,
+                    "width": 183.007,
+                    "height": 12.187999999999988,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": "6a324da30ba06ff451701f2f"
+                },
+                {
+                    "id": "a4b36f60-eef0-ef76-4ac8-73b923e1716f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:22.371Z",
+        "label": "contentEditMode-exit-start",
+        "data": {
+            "editedRectsBeforeExit": [
+                {
+                    "pageNumber": 1,
+                    "x1": 92.25,
+                    "y1": 87,
+                    "x2": 351.23,
+                    "y2": 194.01
+                }
+            ],
+            "annotations": [
+                {
+                    "id": "d8c50966-f03e-5229-a120-76c79ec83023",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                },
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 133.78999999999996,
+                    "width": 183.007,
+                    "height": 12.187999999999988,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": "6a324da30ba06ff451701f2f"
+                },
+                {
+                    "id": "a4b36f60-eef0-ef76-4ac8-73b923e1716f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:22.683Z",
+        "label": "contentEditMode-exit-finished",
+        "data": {
+            "editedRectsAfterExit": [],
+            "annotations": []
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:31.953Z",
+        "label": "webviewer-ready",
+        "data": {
+            "fileUrl": "http://localhost:3000/storage/documents/6a2f888d0204fab9effb8d27/6a2fd0212e1debaf1288b759/6a2fd7f971d6ab275d1d873a.pdf",
+            "hasContentEditManager": true,
+            "annotations": []
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:32.645Z",
+        "label": "documentLoaded",
+        "data": {
+            "currentPage": 1,
+            "pageCount": 1,
+            "annotationsBeforeRender": []
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:32.646Z",
+        "label": "renderCommentThreads-start",
+        "data": {
+            "threadCount": 2,
+            "allAnnotationsBeforeDelete": [],
+            "existingCommentAnchorsToDelete": []
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:32.646Z",
+        "label": "renderCommentThreads-after-delete",
+        "data": {
+            "annotationsAfterDelete": []
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:32.660Z",
+        "label": "renderCommentThreads-imported-highlight",
+        "data": {
+            "annotationId": "6a324da30ba06ff451701f2f",
+            "importedAnnotation": {
+                "id": "913f9599-376c-6509-db68-03b6428de13f",
+                "subject": "Comment",
+                "pageNumber": 1,
+                "x": 92.25,
+                "y": 135.31099999999992,
+                "width": 86.054,
+                "height": 10.676000000000045,
+                "isCommentAnchor": true,
+                "isTemporaryCommentAnchor": true,
+                "threadId": "6a324da30ba06ff451701f2f"
+            },
+            "xfdfIncludesTemporaryFlag": true
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:32.663Z",
+        "label": "renderCommentThreads-created-point-marker",
+        "data": {
+            "annotationId": "6a312496611947f0cff99315",
+            "visualState": "point",
+            "hasXfdf": false,
+            "annotations": [
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 135.31099999999992,
+                    "width": 86.054,
+                    "height": 10.676000000000045,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": "6a324da30ba06ff451701f2f"
+                },
+                {
+                    "id": "fe6b73d8-bbf6-c793-a6f5-34115b179d28",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    },
+    {
+        "at": "2026-06-17T07:33:32.668Z",
+        "label": "documentLoaded-after-renderCommentThreads",
+        "data": {
+            "threadCount": 2,
+            "annotationsAfterRender": [
+                {
+                    "id": "913f9599-376c-6509-db68-03b6428de13f",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 92.25,
+                    "y": 135.31099999999992,
+                    "width": 86.054,
+                    "height": 10.676000000000045,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": true,
+                    "threadId": "6a324da30ba06ff451701f2f"
+                },
+                {
+                    "id": "fe6b73d8-bbf6-c793-a6f5-34115b179d28",
+                    "subject": "Comment",
+                    "pageNumber": 1,
+                    "x": 172,
+                    "y": 232,
+                    "width": 16,
+                    "height": 16,
+                    "isCommentAnchor": true,
+                    "isTemporaryCommentAnchor": false,
+                    "threadId": "6a312496611947f0cff99315"
+                }
+            ]
+        }
+    }
+]
