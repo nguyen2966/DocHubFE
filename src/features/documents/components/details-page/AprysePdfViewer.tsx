@@ -7,16 +7,51 @@ import {
 } from 'react'
 import WebViewerModule from '@pdftron/webviewer'
 import type { WebViewerInstance } from '@pdftron/webviewer'
+
+import type {
+  EditedRect,
+  PendingCommentAnchor,
+} from '../../../comments/types/comment.type'
+import type { CommentThread } from '../../../comments/utils/comment-tree.util'
+import {
+  CommentAnnotationOverlayLayer,
+  type CommentMarkerOverlay,
+} from '../../../comments/components/CommentAnnotationOverlayLayer'
 import { PdfPageControls } from './ControlProps'
+
+export interface EditedPdfExport {
+  file: Blob
+  editedRects: EditedRect[]
+  degradedAnnotationIds: string[]
+}
 
 interface AprysePdfViewerProps {
   fileUrl: string
   isPdfEditing: boolean
+
+  commentThreads?: CommentThread[]
+  selectedCommentAnnotationId?: string | null
+  commentsDisabled?: boolean
+
+  onCommentAnnotationClick?: (
+    annotationId: string,
+    clientPosition: { x: number; y: number },
+  ) => void
+
+  onPendingCommentAnchorCreated?: (
+    anchor: PendingCommentAnchor,
+    clientPosition: { x: number; y: number },
+  ) => void
 }
 
 export interface AprysePdfViewerRef {
-  exportEditedPdf: () => Promise<Blob | null>
+  exportEditedPdf: () => Promise<EditedPdfExport | null>
   reloadOriginalPdf: () => void
+
+  renderCommentThreads?: (threads: CommentThread[]) => void | Promise<void>
+  scrollToCommentAnnotation?: (annotationId: string) => void | Promise<void>
+  highlightCommentAnnotation?: (annotationId: string) => void
+  removeTemporaryCommentAnchor?: () => void
 }
 
 const WebViewer = (WebViewerModule as any).default ?? WebViewerModule
@@ -24,10 +59,58 @@ const WebViewer = (WebViewerModule as any).default ?? WebViewerModule
 type AnyAnnotation = any
 type AnyContentEditManager = any
 type AnyContentBoxEditor = any
+type AnyQuad = {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  x3: number
+  y3: number
+  x4: number
+  y4: number
+  toRect?: () => {
+    x1?: number
+    y1?: number
+    x2?: number
+    y2?: number
+    getWidth?: () => number
+    getHeight?: () => number
+  }
+}
+
+type TextSelection = {
+  quads: AnyQuad[]
+  text: string
+  pageNumber: number
+  position: { x: number; y: number }
+  clientPosition: { x: number; y: number }
+}
+
+type RectLike = {
+  x1?: number
+  y1?: number
+  x2?: number
+  y2?: number
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  getX1?: () => number
+  getY1?: () => number
+  getX2?: () => number
+  getY2?: () => number
+  getWidth?: () => number
+  getHeight?: () => number
+}
 
 type ApryseWebComponentElement = HTMLElement & {
   shadowRoot: ShadowRoot | null
 }
+
+const COMMENT_ANCHOR_TYPE = 'comment_anchor'
+const COMMENT_THREAD_ID_KEY = 'commentThreadId'
+const COMMENT_ANCHOR_TYPE_KEY = 'commentAnchorType'
+const TEMPORARY_ANCHOR_KEY = 'temporaryCommentAnchor'
 
 const wait = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -52,11 +135,7 @@ function getApryseWebComponent(viewerElement: HTMLDivElement) {
 function getApryseShadowRoot(viewerElement: HTMLDivElement) {
   const webComponent = getApryseWebComponent(viewerElement)
 
-  if (!webComponent?.shadowRoot) {
-    return null
-  }
-
-  return webComponent.shadowRoot
+  return webComponent?.shadowRoot ?? null
 }
 
 function dispatchMouseLikeEvent(
@@ -115,9 +194,62 @@ function findPageAreaInShadowRoot(shadowRoot: ShadowRoot) {
   return shadowRoot.querySelector('#app')
 }
 
-async function clickInsideApryseShadowRoot(
-  viewerElement: HTMLDivElement,
+function findApryseScrollContainer(viewerElement: HTMLDivElement) {
+  const shadowRoot = getApryseShadowRoot(viewerElement)
+
+  if (!shadowRoot) return null
+
+  const selectors = [
+    '[data-element="documentContainer"]',
+    '.DocumentContainer',
+    '.documentContainer',
+    '.document-container',
+    '#DocumentViewer',
+    '#app',
+  ]
+
+  for (const selector of selectors) {
+    const element = shadowRoot.querySelector(selector) as HTMLElement | null
+
+    if (
+      element &&
+      (element.scrollHeight > element.clientHeight ||
+        element.scrollWidth > element.clientWidth)
+    ) {
+      return element
+    }
+  }
+
+  return null
+}
+
+function normalizeAprysePointToClient(
+  viewerElement: HTMLDivElement | null,
+  point: { x: number; y: number },
 ) {
+  if (!viewerElement) return point
+
+  const viewerRect = viewerElement.getBoundingClientRect()
+
+  const alreadyClientPosition =
+    point.x >= viewerRect.left - 8 &&
+    point.x <= viewerRect.right + 8 &&
+    point.y >= viewerRect.top - 8 &&
+    point.y <= viewerRect.bottom + 8
+
+  if (alreadyClientPosition) {
+    return point
+  }
+
+  const scrollContainer = findApryseScrollContainer(viewerElement)
+
+  return {
+    x: viewerRect.left + point.x - (scrollContainer?.scrollLeft ?? 0),
+    y: viewerRect.top + point.y - (scrollContainer?.scrollTop ?? 0),
+  }
+}
+
+async function clickInsideApryseShadowRoot(viewerElement: HTMLDivElement) {
   const shadowRoot = getApryseShadowRoot(viewerElement)
 
   if (!shadowRoot) {
@@ -137,8 +269,7 @@ async function clickInsideApryseShadowRoot(
   const x = rect.left + 12
   const y = rect.top + 12
 
-  const realTarget =
-    (shadowRoot as any).elementFromPoint?.(x, y) ?? pageArea
+  const realTarget = (shadowRoot as any).elementFromPoint?.(x, y) ?? pageArea
 
   dispatchMouseLikeEvent(realTarget, 'pointerdown', x, y)
   dispatchMouseLikeEvent(realTarget, 'mousedown', x, y)
@@ -156,13 +287,12 @@ async function clickInsideApryseShadowRoot(
 function isContentEditPlaceholderAnnotation(annotation: AnyAnnotation) {
   return Boolean(
     annotation?.isContentEditPlaceholder?.() ||
-      annotation?.isContentEditPlaceHolder?.(),
+    annotation?.isContentEditPlaceHolder?.(),
   )
 }
 
 function getContentEditBoxId(annotation: AnyAnnotation) {
-  const contentBoxId =
-    annotation?.getCustomData?.('contentEditBoxId') ?? null
+  const contentBoxId = annotation?.getCustomData?.('contentEditBoxId') ?? null
 
   if (!contentBoxId || typeof contentBoxId !== 'string') {
     return null
@@ -186,13 +316,10 @@ function getSelectedContentEditPlaceholderAnnotation(
   )
 }
 
-function getAllContentEditPlaceholderAnnotations(
-  instance: WebViewerInstance,
-) {
+function getAllContentEditPlaceholderAnnotations(instance: WebViewerInstance) {
   const { annotationManager } = instance.Core
 
-  const annotations =
-    annotationManager.getAnnotationsList?.() ?? []
+  const annotations = annotationManager.getAnnotationsList?.() ?? []
 
   return annotations.filter((annotation: AnyAnnotation) =>
     isContentEditPlaceholderAnnotation(annotation),
@@ -205,15 +332,13 @@ function collectContentEditBoxIds(instance: WebViewerInstance) {
   const selectedPlaceholder =
     getSelectedContentEditPlaceholderAnnotation(instance)
 
-  const selectedBoxId =
-    getContentEditBoxId(selectedPlaceholder)
+  const selectedBoxId = getContentEditBoxId(selectedPlaceholder)
 
   if (selectedBoxId) {
     ids.add(selectedBoxId)
   }
 
-  const placeholders =
-    getAllContentEditPlaceholderAnnotations(instance)
+  const placeholders = getAllContentEditPlaceholderAnnotations(instance)
 
   for (const annotation of placeholders) {
     const contentBoxId = getContentEditBoxId(annotation)
@@ -242,8 +367,7 @@ async function stopAllContentBoxEditing(instance: WebViewerInstance) {
 
   for (const contentBoxId of contentBoxIds) {
     try {
-      const box =
-        contentEditManager.getContentBoxById?.(contentBoxId)
+      const box = contentEditManager.getContentBoxById?.(contentBoxId)
 
       if (!box) {
         continue
@@ -280,93 +404,1241 @@ async function endContentEditMode(instance: WebViewerInstance) {
   await wait(300)
 }
 
+function getQuadBounds(quads: AnyQuad[]) {
+  const xs: number[] = []
+  const ys: number[] = []
+
+  for (const quad of quads) {
+    xs.push(quad.x1, quad.x2, quad.x3, quad.x4)
+    ys.push(quad.y1, quad.y2, quad.y3, quad.y4)
+  }
+
+  return {
+    minX: Math.min(...xs),
+    minY: Math.min(...ys),
+    maxX: Math.max(...xs),
+    maxY: Math.max(...ys),
+  }
+}
+
+function getFiniteNumber(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value
+    }
+  }
+
+  return null
+}
+
+function getPageNumberFromContentBox(box: any) {
+  const pageNumber = getFiniteNumber(
+    box?.PageNumber,
+    box?.pageNumber,
+    box?.getPageNumber?.(),
+  )
+
+  if (pageNumber !== null) return pageNumber
+
+  const pageIndex = getFiniteNumber(box?.pageIndex, box?.getPageIndex?.())
+
+  return pageIndex === null ? null : pageIndex + 1
+}
+
+function extractEditedRectFromPayload(payload: any): EditedRect | null {
+  const box = payload?.ra ?? payload?.editor ?? payload
+
+  if (!box) return null
+
+  const rect = (box.getRect?.() ??
+    box.getBBox?.() ??
+    box.getBoundingRect?.() ??
+    box.rect ??
+    box.Rect ??
+    {}) as RectLike
+
+  const pageNumber = getPageNumberFromContentBox(box)
+  const x1 = getFiniteNumber(rect.x1, rect.getX1?.(), box.X, box.x)
+  const y1 = getFiniteNumber(rect.y1, rect.getY1?.(), box.Y, box.y)
+  const width = getFiniteNumber(rect.width, rect.getWidth?.(), box.Width, box.width)
+  const height = getFiniteNumber(
+    rect.height,
+    rect.getHeight?.(),
+    box.Height,
+    box.height,
+  )
+  const x2 = getFiniteNumber(
+    rect.x2,
+    rect.getX2?.(),
+    x1 !== null && width !== null ? x1 + width : null,
+  )
+  const y2 = getFiniteNumber(
+    rect.y2,
+    rect.getY2?.(),
+    y1 !== null && height !== null ? y1 + height : null,
+  )
+
+  if (
+    pageNumber === null ||
+    x1 === null ||
+    y1 === null ||
+    x2 === null ||
+    y2 === null
+  ) {
+    return null
+  }
+
+  return { pageNumber, x1, y1, x2, y2 }
+}
+
+function dedupeEditedRects(rects: EditedRect[]) {
+  const seen = new Set<string>()
+  const result: EditedRect[] = []
+
+  for (const rect of rects) {
+    const key = [
+      rect.pageNumber,
+      rect.x1.toFixed(2),
+      rect.y1.toFixed(2),
+      rect.x2.toFixed(2),
+      rect.y2.toFixed(2),
+    ].join(':')
+
+    if (seen.has(key)) continue
+
+    seen.add(key)
+    result.push(rect)
+  }
+
+  return result
+}
+
+function doRectsOverlap(a: EditedRect, b: EditedRect, padding = 4) {
+  if (a.pageNumber !== b.pageNumber) return false
+
+  const aX1 = Math.min(a.x1, a.x2) - padding
+  const aX2 = Math.max(a.x1, a.x2) + padding
+  const aY1 = Math.min(a.y1, a.y2) - padding
+  const aY2 = Math.max(a.y1, a.y2) + padding
+
+  const bX1 = Math.min(b.x1, b.x2) - padding
+  const bX2 = Math.max(b.x1, b.x2) + padding
+  const bY1 = Math.min(b.y1, b.y2) - padding
+  const bY2 = Math.max(b.y1, b.y2) + padding
+
+  return aX1 <= bX2 && aX2 >= bX1 && aY1 <= bY2 && aY2 >= bY1
+}
+
+function isLikelyContentEditAnnotation(annotation: AnyAnnotation) {
+  if (isCommentAnchor(annotation)) return false
+
+  return (
+    isContentEditPlaceholderAnnotation(annotation) ||
+    annotation?.Subject === 'Rectangle' ||
+    annotation?.ToolName === 'ContentEdit'
+  )
+}
+
+function collectContentEditAnnotationRects(instance: WebViewerInstance) {
+  const annotations =
+    instance.Core.annotationManager.getAnnotationsList?.() ?? []
+
+  return annotations
+    .filter((annotation: AnyAnnotation) =>
+      isLikelyContentEditAnnotation(annotation),
+    )
+    .map((annotation: AnyAnnotation) => extractEditedRectFromPayload(annotation))
+    .filter((rect: EditedRect | null): rect is EditedRect => Boolean(rect))
+}
+
+function collectDegradedCommentAnnotationIds(
+  instance: WebViewerInstance,
+  editedRects: EditedRect[],
+) {
+  const annotations =
+    instance.Core.annotationManager.getAnnotationsList?.() ?? []
+
+  return Array.from(
+    new Set(
+      annotations
+        .filter((annotation: AnyAnnotation) => isCommentAnchor(annotation))
+        .filter((annotation: AnyAnnotation) => {
+          const annotationRect = extractEditedRectFromPayload(annotation)
+
+          return annotationRect
+            ? editedRects.some((rect) => doRectsOverlap(annotationRect, rect))
+            : false
+        })
+        .map((annotation: AnyAnnotation) => getThreadIdFromAnnotation(annotation))
+        .filter((id: string | null): id is string => Boolean(id)),
+    ),
+  )
+}
+
+const APRYSE_DEBUG_STORAGE_KEY = 'doc-hub:apryse-debug-log'
+
+function getDebugKeys(value: unknown) {
+  if (!value || typeof value !== 'object') return null
+
+  try {
+    const ownKeys = Reflect.ownKeys(value).map(String)
+    const prototype = Object.getPrototypeOf(value)
+    const prototypeKeys = prototype ? Reflect.ownKeys(prototype).map(String) : []
+
+    return {
+      ownKeys,
+      prototypeKeys,
+    }
+  } catch {
+    return null
+  }
+}
+
+function readRectLikeForDebug(value: any) {
+  if (!value) return null
+
+  const rect = value.getRect?.() ??
+    value.getBBox?.() ??
+    value.getBoundingRect?.() ??
+    value.rect ??
+    value.Rect ??
+    null
+
+  return {
+    keys: getDebugKeys(value),
+    pageNumber: getFiniteNumber(
+      value.PageNumber,
+      value.pageNumber,
+      value.getPageNumber?.(),
+    ),
+    pageIndex: getFiniteNumber(value.pageIndex, value.getPageIndex?.()),
+    rect: rect
+      ? {
+          keys: getDebugKeys(rect),
+          x1: getFiniteNumber(rect.x1, rect.getX1?.()),
+          y1: getFiniteNumber(rect.y1, rect.getY1?.()),
+          x2: getFiniteNumber(rect.x2, rect.getX2?.()),
+          y2: getFiniteNumber(rect.y2, rect.getY2?.()),
+          width: getFiniteNumber(rect.width, rect.getWidth?.()),
+          height: getFiniteNumber(rect.height, rect.getHeight?.()),
+        }
+      : null,
+    x: getFiniteNumber(value.X, value.x),
+    y: getFiniteNumber(value.Y, value.y),
+    width: getFiniteNumber(value.Width, value.width),
+    height: getFiniteNumber(value.Height, value.height),
+  }
+}
+
+function getPayloadDebugData(payload: any, rect: EditedRect | null) {
+  return {
+    payloadKeys: getDebugKeys(payload),
+    extractedRect: rect,
+    payload: readRectLikeForDebug(payload),
+    editor: readRectLikeForDebug(payload?.editor),
+    ra: readRectLikeForDebug(payload?.ra),
+  }
+}
+
+function getAnnotationDebugData(annotation: AnyAnnotation) {
+  return {
+    id: annotation?.Id ?? null,
+    subject: annotation?.Subject ?? null,
+    pageNumber: annotation?.PageNumber ?? null,
+    x: annotation?.X ?? null,
+    y: annotation?.Y ?? null,
+    width: annotation?.Width ?? null,
+    height: annotation?.Height ?? null,
+    isCommentAnchor: isCommentAnchor(annotation),
+    isTemporaryCommentAnchor: isTemporaryCommentAnchor(annotation),
+    threadId: getThreadIdFromAnnotation(annotation),
+  }
+}
+
+function getAnnotationManagerDebugData(instance: WebViewerInstance | null) {
+  if (!instance) return []
+
+  const annotations =
+    instance.Core.annotationManager.getAnnotationsList?.() ?? []
+
+  return annotations.map((annotation: AnyAnnotation) =>
+    getAnnotationDebugData(annotation),
+  )
+}
+
+function writeApryseDebugLog(label: string, data: unknown) {
+  // debug only: Apryse clears the console during save, so persist compact logs.
+  if (typeof window === 'undefined') return
+
+  try {
+    const existing = window.localStorage.getItem(APRYSE_DEBUG_STORAGE_KEY)
+    const entries = existing ? JSON.parse(existing) : []
+    const nextEntries = Array.isArray(entries) ? entries : []
+
+    nextEntries.push({
+      at: new Date().toISOString(),
+      label,
+      data,
+    })
+
+    window.localStorage.setItem(
+      APRYSE_DEBUG_STORAGE_KEY,
+      JSON.stringify(nextEntries.slice(-80)),
+    )
+  } catch (error) {
+    console.warn('Failed to write Apryse debug log:', error)
+  }
+}
+
+function isCommentAnchor(annotation: AnyAnnotation) {
+  return annotation?.getCustomData?.(COMMENT_ANCHOR_TYPE_KEY) === COMMENT_ANCHOR_TYPE
+}
+
+function isTemporaryCommentAnchor(annotation: AnyAnnotation) {
+  return annotation?.getCustomData?.(TEMPORARY_ANCHOR_KEY) === 'true'
+}
+
+function getThreadIdFromAnnotation(annotation: AnyAnnotation) {
+  const id = annotation?.getCustomData?.(COMMENT_THREAD_ID_KEY)
+
+  return typeof id === 'string' && id.length > 0 ? id : null
+}
+
+function setCommentAnchorData(
+  annotation: AnyAnnotation,
+  threadId: string | null,
+  temporary = false,
+) {
+  annotation.setCustomData?.(COMMENT_ANCHOR_TYPE_KEY, COMMENT_ANCHOR_TYPE)
+
+  if (threadId) {
+    annotation.setCustomData?.(COMMENT_THREAD_ID_KEY, threadId)
+  }
+
+  if (temporary) {
+    annotation.setCustomData?.(TEMPORARY_ANCHOR_KEY, 'true')
+  } else {
+    annotation.setCustomData?.(TEMPORARY_ANCHOR_KEY, 'false')
+  }
+}
+
+function setCommentAnchorStyle(instance: WebViewerInstance, annotation: AnyAnnotation) {
+  const { Annotations } = instance.Core
+
+  annotation.StrokeColor = new Annotations.Color(246, 194, 64)
+  annotation.FillColor = new Annotations.Color(255, 232, 128)
+  annotation.Opacity = 0.45
+  annotation.NoMove = true
+  annotation.NoResize = true
+  annotation.NoDelete = true
+}
+
+function setCommentPointMarkerStyle(
+  instance: WebViewerInstance,
+  annotation: AnyAnnotation,
+) {
+  const { Annotations } = instance.Core
+
+  annotation.StrokeColor = new Annotations.Color(24, 92, 120)
+  annotation.FillColor = new Annotations.Color(255, 232, 128)
+  annotation.Opacity = 0.95
+  annotation.StrokeThickness = 2
+  annotation.NoMove = true
+  annotation.NoResize = true
+  annotation.NoDelete = true
+}
+
 export const AprysePdfViewer = forwardRef<
   AprysePdfViewerRef,
   AprysePdfViewerProps
->(function AprysePdfViewer({ fileUrl, isPdfEditing }, ref) {
+>(function AprysePdfViewer(
+  {
+    fileUrl,
+    isPdfEditing,
+    commentThreads = [],
+    selectedCommentAnnotationId,
+    commentsDisabled,
+    onCommentAnnotationClick,
+    onPendingCommentAnchorCreated,
+  },
+  ref,
+) {
   const viewerRef = useRef<HTMLDivElement | null>(null)
   const instanceRef = useRef<WebViewerInstance | null>(null)
-  const activeContentEditorRef =
-    useRef<AnyContentBoxEditor | null>(null)
+  const activeContentEditorRef = useRef<AnyContentBoxEditor | null>(null)
+  const editedRectsRef = useRef<EditedRect[]>([])
+
+  const commentThreadsRef = useRef<CommentThread[]>(commentThreads)
+  const selectedCommentAnnotationIdRef = useRef<string | null>(
+    selectedCommentAnnotationId ?? null,
+  )
+  const commentsDisabledRef = useRef(Boolean(commentsDisabled))
+  const isPdfEditingRef = useRef(isPdfEditing)
+  const onCommentAnnotationClickRef = useRef(onCommentAnnotationClick)
+  const onPendingCommentAnchorCreatedRef = useRef(
+    onPendingCommentAnchorCreated,
+  )
+  const latestSelectionRef = useRef<TextSelection | null>(null)
+  const temporaryAnchorIdRef = useRef<string | null>(null)
+  const originalTextPopupItemsRef = useRef<object[] | null>(null)
+  const originalAnnotationPopupItemsRef = useRef<object[] | null>(null)
+  const renderSequenceRef = useRef(0)
+  const skipNextEditExitCommentRestoreRef = useRef(false)
+  const lastDegradedAnnotationIdsRef = useRef<string[]>([])
+  const documentLoadedRef = useRef(false)
+  const pendingRenderThreadsRef = useRef<CommentThread[] | null>(null)
+  const overlayFrameRef = useRef<number | null>(null)
+  const overlayPositionCleanupRef = useRef<(() => void) | null>(null)
 
   const [currentPage, setCurrentPage] = useState(1)
   const [pageCount, setPageCount] = useState(1)
+  const [selectionActionPosition, setSelectionActionPosition] = useState<{
+    x: number
+    y: number
+  } | null>(null)
+  const [commentMarkerOverlays, setCommentMarkerOverlays] = useState<
+    CommentMarkerOverlay[]
+  >([])
+
+  function isCommentOverlayHidden() {
+    return Boolean(commentsDisabledRef.current || isPdfEditingRef.current)
+  }
+
+  function getAnnotationClientPosition(annotation: AnyAnnotation) {
+    const instance = instanceRef.current
+    const viewerElement = viewerRef.current
+
+    if (!instance) {
+      return { x: 24, y: 160 }
+    }
+
+    try {
+      const displayMode = instance.Core.documentViewer
+        .getDisplayModeManager()
+        .getDisplayMode()
+
+      const point = displayMode.pageToWindow(
+        {
+          x: annotation.X + annotation.Width,
+          y: annotation.Y,
+        },
+        annotation.PageNumber,
+      )
+
+      return normalizeAprysePointToClient(viewerElement, point)
+    } catch {
+      const rect = viewerElement?.getBoundingClientRect()
+
+      return {
+        x: (rect?.left ?? 0) + 24,
+        y: (rect?.top ?? 0) + 140,
+      }
+    }
+  }
+
+  function getThreadMarkerClientPosition(thread: CommentThread) {
+    const { annotation } = thread
+    const pageNumber = annotation.pageNumber
+    const position = annotation.position
+
+    if (
+      typeof pageNumber !== 'number' ||
+      !position ||
+      typeof position.x !== 'number' ||
+      typeof position.y !== 'number'
+    ) {
+      return null
+    }
+
+    const clientPosition = getSelectionClientPosition(pageNumber, position)
+
+    if (annotation.visualState === 'highlight') {
+      return {
+        x: clientPosition.x + 12,
+        y: clientPosition.y + 14,
+      }
+    }
+
+    return clientPosition
+  }
+
+  function refreshCommentOverlayPositions() {
+    if (isCommentOverlayHidden()) {
+      setSelectionActionPosition(null)
+      setCommentMarkerOverlays([])
+      return
+    }
+
+    const selection = latestSelectionRef.current
+
+    setSelectionActionPosition(
+      selection
+        ? {
+            x: getSelectionClientPosition(
+              selection.pageNumber,
+              selection.position,
+            ).x + 12,
+            y: getSelectionClientPosition(
+              selection.pageNumber,
+              selection.position,
+            ).y - 2,
+          }
+        : null,
+    )
+
+    setCommentMarkerOverlays(
+      commentThreadsRef.current
+        .filter((thread) => thread.annotation.status !== 'deleted')
+        .map((thread) => {
+          const position = getThreadMarkerClientPosition(thread)
+
+          return position ? { thread, position } : null
+        })
+        .filter(
+          (marker): marker is CommentMarkerOverlay => marker !== null,
+        ),
+    )
+  }
+
+  function scheduleCommentOverlayRefresh() {
+    if (overlayFrameRef.current !== null) return
+
+    overlayFrameRef.current = requestAnimationFrame(() => {
+      overlayFrameRef.current = null
+      refreshCommentOverlayPositions()
+    })
+  }
+
+  function bindCommentOverlayPositionListeners() {
+    overlayPositionCleanupRef.current?.()
+    overlayPositionCleanupRef.current = null
+
+    const viewerElement = viewerRef.current
+    const scrollContainer = viewerElement
+      ? findApryseScrollContainer(viewerElement)
+      : null
+    const handlePositionChange = () => scheduleCommentOverlayRefresh()
+
+    scrollContainer?.addEventListener('scroll', handlePositionChange, {
+      passive: true,
+    })
+    window.addEventListener('resize', handlePositionChange)
+
+    overlayPositionCleanupRef.current = () => {
+      scrollContainer?.removeEventListener('scroll', handlePositionChange)
+      window.removeEventListener('resize', handlePositionChange)
+    }
+  }
+
+  function createCommentPointMarker(thread: CommentThread) {
+    const instance = instanceRef.current
+
+    if (!instance) return null
+
+    const { annotationManager, Annotations } = instance.Core
+    const { annotation } = thread
+    const markerSize = 16
+    const MarkerAnnotation =
+      Annotations.EllipseAnnotation ?? Annotations.RectangleAnnotation
+    const marker = new MarkerAnnotation()
+
+    marker.PageNumber = annotation.pageNumber
+    marker.X = annotation.position.x - markerSize / 2
+    marker.Y = annotation.position.y - markerSize / 2
+    marker.Width = markerSize
+    marker.Height = markerSize
+    marker.Subject = 'Comment'
+    marker.Contents = 'Comment marker'
+
+    setCommentPointMarkerStyle(instance, marker)
+    setCommentAnchorData(marker, annotation._id)
+
+    annotationManager.addAnnotation(marker, {
+      imported: true,
+    })
+
+    if (annotation.apryseAnnotationId && marker.Id !== annotation.apryseAnnotationId) {
+      annotationManager.updateAnnotationId?.(marker, annotation.apryseAnnotationId)
+    }
+
+    annotationManager.redrawAnnotation(marker)
+
+    return marker
+  }
+
+  function getThreadsWithOptimisticPointMarkers(annotationIds: string[]) {
+    if (!annotationIds.length) return commentThreadsRef.current
+
+    const degradedIds = new Set(annotationIds)
+
+    return commentThreadsRef.current.map((thread) =>
+      degradedIds.has(thread.annotation._id)
+        ? {
+            ...thread,
+            annotation: {
+              ...thread.annotation,
+              visualState: 'point' as const,
+            },
+          }
+        : thread,
+    )
+  }
+
+  function findCommentAnnotation(annotationId: string) {
+    const instance = instanceRef.current
+
+    if (!instance) return null
+
+    const annotations =
+      instance.Core.annotationManager.getAnnotationsList?.() ?? []
+
+    return (
+      annotations.find((annotation: AnyAnnotation) => {
+        if (getThreadIdFromAnnotation(annotation) === annotationId) {
+          return true
+        }
+
+        return annotation.Id === annotationId
+      }) ?? null
+    )
+  }
+
+  function findCommentThread(annotationId: string) {
+    return (
+      commentThreadsRef.current.find(
+        (thread) => thread.annotation._id === annotationId,
+      ) ?? null
+    )
+  }
+
+  function isRenderedCommentAnnotation(annotation: AnyAnnotation) {
+    if (isCommentAnchor(annotation)) return true
+
+    const threadId = getThreadIdFromAnnotation(annotation)
+    if (threadId) return true
+
+    const threadIds = new Set(
+      commentThreadsRef.current.map((thread) => thread.annotation._id),
+    )
+    const apryseAnnotationIds = new Set(
+      commentThreadsRef.current
+        .map((thread) => thread.annotation.apryseAnnotationId)
+        .filter((id): id is string => Boolean(id)),
+    )
+
+    if (threadIds.has(annotation.Id)) return true
+    if (apryseAnnotationIds.has(annotation.Id)) return true
+
+    return annotation.Subject === 'Comment'
+  }
+
+  async function removeTemporaryCommentAnchor() {
+    const instance = instanceRef.current
+    const temporaryAnchorId = temporaryAnchorIdRef.current
+
+    if (!instance || !temporaryAnchorId) return
+
+    const { annotationManager } = instance.Core
+    const temporaryAnnotation =
+      annotationManager
+        .getAnnotationsList()
+        .find((annotation: AnyAnnotation) => annotation.Id === temporaryAnchorId) ??
+      null
+
+    if (temporaryAnnotation) {
+      annotationManager.deleteAnnotation(temporaryAnnotation, {
+        imported: true,
+        force: true,
+      })
+    }
+
+    temporaryAnchorIdRef.current = null
+  }
+
+  function removeRenderedCommentAnchors(reason: string) {
+    const instance = instanceRef.current
+
+    if (!instance) return []
+
+    const { annotationManager } = instance.Core
+    const commentAnchors = annotationManager
+      .getAnnotationsList()
+      .filter((annotation: AnyAnnotation) =>
+        isRenderedCommentAnnotation(annotation),
+      )
+
+    writeApryseDebugLog('removeRenderedCommentAnchors', {
+      reason,
+      commentAnchorsToRemove: commentAnchors.map((annotation: AnyAnnotation) =>
+        getAnnotationDebugData(annotation),
+      ),
+    })
+
+    if (commentAnchors.length > 0) {
+      annotationManager.deleteAnnotations(commentAnchors, {
+        imported: true,
+        force: true,
+      })
+    }
+
+    return commentAnchors
+  }
+
+  function getSelectionClientPosition(
+    pageNumber: number,
+    position: { x: number; y: number },
+  ) {
+    const instance = instanceRef.current
+    const viewerElement = viewerRef.current
+
+    if (!instance) {
+      return { x: 24, y: 160 }
+    }
+
+    try {
+      const displayMode = instance.Core.documentViewer
+        .getDisplayModeManager()
+        .getDisplayMode()
+      const point = displayMode.pageToWindow(position, pageNumber)
+
+      return normalizeAprysePointToClient(viewerElement, point)
+    } catch {
+      const rect = viewerElement?.getBoundingClientRect()
+
+      return {
+        x: (rect?.left ?? 0) + 24,
+        y: (rect?.top ?? 0) + 140,
+      }
+    }
+  }
+
+  function cacheTextSelection(
+    quads: AnyQuad[] | null | undefined,
+    text: string | null | undefined,
+    pageNumber: number,
+  ) {
+    const safeQuads = Array.isArray(quads) ? quads : []
+    const safeText = typeof text === 'string' ? text : ''
+
+    if (!safeQuads.length || !safeText.trim()) {
+      latestSelectionRef.current = null
+      setSelectionActionPosition(null)
+      return
+    }
+
+    const bounds = getQuadBounds(safeQuads)
+    const position = {
+      x: bounds.maxX,
+      y: bounds.minY,
+    }
+
+    latestSelectionRef.current = {
+      quads: safeQuads,
+      text: safeText,
+      pageNumber,
+      position,
+      clientPosition: getSelectionClientPosition(pageNumber, position),
+    }
+
+    scheduleCommentOverlayRefresh()
+  }
+
+  async function createPendingCommentAnchor() {
+    const instance = instanceRef.current
+
+    if (!instance || commentsDisabledRef.current || isPdfEditingRef.current) {
+      return
+    }
+
+    const { documentViewer, annotationManager, Annotations } = instance.Core
+
+    let selection = latestSelectionRef.current
+
+    if (!selection) {
+      const pageNumber = documentViewer.getCurrentPage()
+      const text = documentViewer.getSelectedText?.(pageNumber) ?? ''
+      const quads =
+        (documentViewer.getSelectedTextQuads?.(pageNumber) as AnyQuad[]) ?? []
+
+      cacheTextSelection(quads, text, pageNumber)
+      selection = latestSelectionRef.current
+    }
+
+    if (!selection) return
+
+    await removeTemporaryCommentAnchor()
+    setSelectionActionPosition(null)
+
+    const bounds = getQuadBounds(selection.quads)
+    const highlight = new Annotations.TextHighlightAnnotation()
+
+    highlight.PageNumber = selection.pageNumber
+    highlight.X = bounds.minX
+    highlight.Y = bounds.minY
+    highlight.Width = bounds.maxX - bounds.minX
+    highlight.Height = bounds.maxY - bounds.minY
+    highlight.Quads = selection.quads
+    highlight.setQuads?.(selection.quads)
+    highlight.Subject = 'Comment'
+    highlight.Contents = selection.text
+
+    setCommentAnchorStyle(instance, highlight)
+    setCommentAnchorData(highlight, null, true)
+
+    annotationManager.addAnnotation(highlight, {
+      imported: true,
+    })
+    annotationManager.redrawAnnotation(highlight)
+    annotationManager.selectAnnotation(highlight)
+
+    temporaryAnchorIdRef.current = highlight.Id
+
+    writeApryseDebugLog('pendingCommentAnchor-created', {
+      selection,
+      bounds,
+      temporaryAnchor: getAnnotationDebugData(highlight),
+      annotations: getAnnotationManagerDebugData(instance),
+    })
+
+    const xfdf = await annotationManager.exportAnnotations({
+      annotationList: [highlight],
+      links: false,
+      widgets: false,
+    } as any)
+
+    writeApryseDebugLog('pendingCommentAnchor-xfdf-exported', {
+      temporaryAnchorId: highlight.Id,
+      xfdfLength: xfdf.length,
+      includesTemporaryFlag: xfdf.includes(TEMPORARY_ANCHOR_KEY),
+      includesCommentAnchorType: xfdf.includes(COMMENT_ANCHOR_TYPE_KEY),
+    })
+
+    onPendingCommentAnchorCreatedRef.current?.(
+      {
+        pageNumber: selection.pageNumber,
+        position: selection.position,
+        xfdf,
+        apryseAnnotationId: highlight.Id,
+        visualState: 'highlight',
+        temporaryAnchorId: highlight.Id,
+      },
+      selection.clientPosition,
+    )
+  }
+
+  function configureCommentUi() {
+    const instance = instanceRef.current
+
+    if (!instance) return
+
+    const { UI } = instance
+
+    if (!originalTextPopupItemsRef.current) {
+      originalTextPopupItemsRef.current = UI.textPopup?.getItems?.() ?? []
+    }
+
+    if (!originalAnnotationPopupItemsRef.current) {
+      originalAnnotationPopupItemsRef.current =
+        UI.annotationPopup?.getItems?.() ?? []
+    }
+
+    if (commentsDisabledRef.current || isPdfEditingRef.current) {
+      latestSelectionRef.current = null
+      setSelectionActionPosition(null)
+      UI.textPopup?.update?.(originalTextPopupItemsRef.current)
+      UI.annotationPopup?.update?.(originalAnnotationPopupItemsRef.current)
+      return
+    }
+
+    UI.textPopup?.update?.([])
+    UI.annotationPopup?.update?.([])
+  }
+
+  async function renderCommentThreads(threads: CommentThread[]) {
+    const instance = instanceRef.current
+
+    if (!instance) return
+
+    if (!documentLoadedRef.current) {
+      pendingRenderThreadsRef.current = threads
+      setCommentMarkerOverlays([])
+
+      writeApryseDebugLog('renderCommentThreads-deferred-until-documentLoaded', {
+        threadCount: threads.length,
+      })
+      return
+    }
+
+    const sequence = renderSequenceRef.current + 1
+    renderSequenceRef.current = sequence
+
+    if (isPdfEditingRef.current) {
+      removeRenderedCommentAnchors('skip-render-while-editing')
+      setCommentMarkerOverlays([])
+      return
+    }
+
+    const { annotationManager } = instance.Core
+
+    const existingCommentAnchors = annotationManager
+      .getAnnotationsList()
+      .filter(
+        (annotation: AnyAnnotation) =>
+          isRenderedCommentAnnotation(annotation) &&
+          (!isTemporaryCommentAnchor(annotation) ||
+            Boolean(getThreadIdFromAnnotation(annotation)) ||
+            annotation.Subject === 'Comment'),
+      )
+
+    writeApryseDebugLog('renderCommentThreads-start', {
+      threadCount: threads.length,
+      allAnnotationsBeforeDelete: getAnnotationManagerDebugData(instance),
+      existingCommentAnchorsToDelete: existingCommentAnchors.map(
+        (annotation: AnyAnnotation) => getAnnotationDebugData(annotation),
+      ),
+    })
+
+    if (existingCommentAnchors.length > 0) {
+      annotationManager.deleteAnnotations(existingCommentAnchors, {
+        imported: true,
+        force: true,
+      })
+    }
+
+    writeApryseDebugLog('renderCommentThreads-after-delete', {
+      annotationsAfterDelete: getAnnotationManagerDebugData(instance),
+    })
+
+    for (const thread of threads) {
+      if (renderSequenceRef.current !== sequence) return
+
+      const { annotation } = thread
+
+      if (annotation.status === 'deleted') continue
+
+      if (annotation.visualState === 'point' || !annotation.xfdf) {
+        writeApryseDebugLog('renderCommentThreads-skipped-native-point-marker', {
+          annotationId: annotation._id,
+          visualState: annotation.visualState,
+          hasXfdf: Boolean(annotation.xfdf),
+          annotations: getAnnotationManagerDebugData(instance),
+        })
+        continue
+      }
+
+      try {
+        const importedAnnotations =
+          ((await annotationManager.importAnnotations(annotation.xfdf)) as
+            | AnyAnnotation[]
+            | undefined) ?? []
+
+        for (const importedAnnotation of importedAnnotations) {
+          if (
+            annotation.apryseAnnotationId &&
+            importedAnnotation.Id !== annotation.apryseAnnotationId
+          ) {
+            annotationManager.updateAnnotationId?.(
+              importedAnnotation,
+              annotation.apryseAnnotationId,
+            )
+          }
+
+          setCommentAnchorStyle(instance, importedAnnotation)
+          setCommentAnchorData(importedAnnotation, annotation._id)
+          annotationManager.redrawAnnotation(importedAnnotation)
+
+          writeApryseDebugLog('renderCommentThreads-imported-highlight', {
+            annotationId: annotation._id,
+            importedAnnotation: getAnnotationDebugData(importedAnnotation),
+            xfdfIncludesTemporaryFlag: annotation.xfdf.includes(
+              TEMPORARY_ANCHOR_KEY,
+            ),
+          })
+        }
+      } catch (error) {
+        console.warn('Failed to import comment annotation:', annotation._id, error)
+      }
+    }
+
+    const selectedId = selectedCommentAnnotationIdRef.current
+
+    if (selectedId) {
+      highlightCommentAnnotation(selectedId)
+    }
+
+    scheduleCommentOverlayRefresh()
+  }
+
+  async function scrollToCommentAnnotation(annotationId: string) {
+    const instance = instanceRef.current
+    const annotation = findCommentAnnotation(annotationId)
+
+    if (!instance) return
+
+    if (annotation) {
+      instance.Core.annotationManager.jumpToAnnotation(annotation)
+    } else {
+      const thread = findCommentThread(annotationId)
+      const pageNumber = thread?.annotation.pageNumber
+      const position = thread?.annotation.position
+
+      if (typeof pageNumber === 'number' && position) {
+        const { documentViewer } = instance.Core
+        const viewerElement = viewerRef.current
+
+        documentViewer.setCurrentPage(pageNumber)
+
+        await waitFrame()
+        await waitFrame()
+
+        try {
+          const displayMode = documentViewer
+            .getDisplayModeManager()
+            .getDisplayMode()
+          const point = displayMode.pageToWindow(position, pageNumber)
+          const scrollContainer = viewerElement
+            ? findApryseScrollContainer(viewerElement)
+            : null
+
+          scrollContainer?.scrollTo({
+            left: Math.max(0, point.x - scrollContainer.clientWidth / 2),
+            top: Math.max(0, point.y - scrollContainer.clientHeight / 3),
+            behavior: 'smooth',
+          })
+        } catch {
+          // Ignore coordinate fallback failures; setting the page still moves close.
+        }
+      }
+    }
+
+    await waitFrame()
+    await waitFrame()
+    scheduleCommentOverlayRefresh()
+  }
+
+  function highlightCommentAnnotation(annotationId: string) {
+    const instance = instanceRef.current
+    const annotation = findCommentAnnotation(annotationId)
+
+    if (!instance || !annotation) return
+
+    const { annotationManager } = instance.Core
+
+    annotationManager.deselectAllAnnotations()
+    annotationManager.selectAnnotation(annotation)
+    annotationManager.redrawAnnotation(annotation)
+  }
+
+  function handleOverlayMarkerClick(
+    thread: CommentThread,
+    clientPosition: { x: number; y: number },
+  ) {
+    const annotationId = thread.annotation._id
+
+    highlightCommentAnnotation(annotationId)
+    onCommentAnnotationClickRef.current?.(annotationId, clientPosition)
+  }
+
+  useEffect(() => {
+    commentThreadsRef.current = commentThreads
+
+    renderCommentThreads(commentThreads).catch((error) => {
+      console.warn('Failed to render comment threads:', error)
+    })
+
+    scheduleCommentOverlayRefresh()
+  }, [commentThreads])
+
+  useEffect(() => {
+    selectedCommentAnnotationIdRef.current = selectedCommentAnnotationId ?? null
+
+    if (selectedCommentAnnotationId) {
+      highlightCommentAnnotation(selectedCommentAnnotationId)
+    }
+
+    scheduleCommentOverlayRefresh()
+  }, [selectedCommentAnnotationId])
+
+  useEffect(() => {
+    commentsDisabledRef.current = Boolean(commentsDisabled)
+    configureCommentUi()
+    scheduleCommentOverlayRefresh()
+  }, [commentsDisabled])
+
+  useEffect(() => {
+    isPdfEditingRef.current = isPdfEditing
+    configureCommentUi()
+    scheduleCommentOverlayRefresh()
+  }, [isPdfEditing])
+
+  useEffect(() => {
+    onCommentAnnotationClickRef.current = onCommentAnnotationClick
+  }, [onCommentAnnotationClick])
+
+  useEffect(() => {
+    onPendingCommentAnchorCreatedRef.current = onPendingCommentAnchorCreated
+  }, [onPendingCommentAnchorCreated])
 
   useEffect(() => {
     if (!viewerRef.current) return
 
     let disposed = false
 
-    ;(WebViewer as any)(
-      {
-        path: '/webviewer/lib',
-        licenseKey: import.meta.env.VITE_APRYSE_LICENSE_KEY,
-        initialDoc: fileUrl,
-        fullAPI: true,
-      },
-      viewerRef.current,
-    ).then((instance: WebViewerInstance) => {
-      if (disposed) return
-
-      instanceRef.current = instance
-
-      const { UI, Core } = instance
-      const { documentViewer } = Core
-
-      UI.getModularHeader('default-top-header')?.setItems([])
-      UI.getModularHeader('tools-header')?.setItems([])
-
-      UI.disableElements([
-        'page-nav-floating-header',
-      ])
-
-      const contentEditManager =
-        getContentEditManager(instance)
-
-      const handleContentBoxEditStarted = (...args: any[]) => {
-        const payload = args[0]
-
-        activeContentEditorRef.current =
-          payload?.editor ?? payload ?? null
-      }
-
-      const handleContentBoxEditEnded = () => {
-        activeContentEditorRef.current = null
-      }
-
-      contentEditManager?.addEventListener?.(
-        'contentBoxEditStarted',
-        handleContentBoxEditStarted,
-      )
-
-      contentEditManager?.addEventListener?.(
-        'contentBoxEditEnded',
-        handleContentBoxEditEnded,
-      )
-
-      documentViewer.addEventListener('documentLoaded', () => {
-        setCurrentPage(documentViewer.getCurrentPage())
-        setPageCount(documentViewer.getPageCount())
-
-        UI.setFitMode(UI.FitMode.FitWidth)
-      })
-
-      documentViewer.addEventListener(
-        'pageNumberUpdated',
-        (pageNumber) => {
-          setCurrentPage(pageNumber)
+      ; (WebViewer as any)(
+        {
+          path: '/webviewer/lib',
+          licenseKey: import.meta.env.VITE_APRYSE_LICENSE_KEY,
+          initialDoc: fileUrl,
+          fullAPI: true,
         },
-      )
+        viewerRef.current,
+      ).then((instance: WebViewerInstance) => {
+        if (disposed) return
 
-      const webComponent =
-        viewerRef.current
-          ? getApryseWebComponent(viewerRef.current)
-          : null
+        instanceRef.current = instance
 
-      console.log('Apryse iframe:', viewerRef.current?.querySelector('iframe'))
-      console.log('Apryse web component:', webComponent)
-      console.log('Apryse shadowRoot:', webComponent?.shadowRoot)
-    })
+        const { UI, Core } = instance
+        const { documentViewer, annotationManager } = Core
+
+        UI.getModularHeader('default-top-header')?.setItems([])
+        UI.getModularHeader('tools-header')?.setItems([])
+
+        UI.disableElements([
+          'page-nav-floating-header',
+          'notesPanel',
+          'notesPanelButton',
+        ])
+
+        configureCommentUi()
+
+        const contentEditManager = getContentEditManager(instance)
+
+        writeApryseDebugLog('webviewer-ready', {
+          fileUrl,
+          hasContentEditManager: Boolean(contentEditManager),
+          annotations: getAnnotationManagerDebugData(instance),
+        })
+
+        const handleContentBoxEditStarted = (...args: any[]) => {
+          const payload = args[0]
+          const rect = extractEditedRectFromPayload(payload)
+
+          activeContentEditorRef.current = payload?.editor ?? payload ?? null
+
+          if (rect) {
+            editedRectsRef.current = dedupeEditedRects([
+              ...editedRectsRef.current,
+              rect,
+            ])
+          }
+
+          writeApryseDebugLog('contentBoxEditStarted', {
+            payload: getPayloadDebugData(payload, rect),
+            editedRectsAfter: editedRectsRef.current,
+            annotations: getAnnotationManagerDebugData(instance),
+          })
+        }
+
+        const handleContentBoxEditEnded = (...args: any[]) => {
+          const payload = args[0]
+
+          writeApryseDebugLog('contentBoxEditEnded', {
+            payload: getPayloadDebugData(
+              payload,
+              extractEditedRectFromPayload(payload),
+            ),
+            editedRectsBeforeClearActiveEditor: editedRectsRef.current,
+            annotations: getAnnotationManagerDebugData(instance),
+          })
+
+          activeContentEditorRef.current = null
+        }
+
+        contentEditManager?.addEventListener?.(
+          'contentBoxEditStarted',
+          handleContentBoxEditStarted,
+        )
+        contentEditManager?.addEventListener?.(
+          'contentBoxEditEnded',
+          handleContentBoxEditEnded,
+        )
+
+        documentViewer.addEventListener('documentLoaded', async () => {
+          documentLoadedRef.current = true
+          setCurrentPage(documentViewer.getCurrentPage())
+          setPageCount(documentViewer.getPageCount())
+
+          UI.setFitMode(UI.FitMode.FitWidth)
+
+          writeApryseDebugLog('documentLoaded', {
+            currentPage: documentViewer.getCurrentPage(),
+            pageCount: documentViewer.getPageCount(),
+            annotationsBeforeRender: getAnnotationManagerDebugData(instance),
+          })
+
+          const threadsToRender =
+            pendingRenderThreadsRef.current ?? commentThreadsRef.current
+          pendingRenderThreadsRef.current = null
+
+          await renderCommentThreads(threadsToRender)
+          bindCommentOverlayPositionListeners()
+          scheduleCommentOverlayRefresh()
+
+          writeApryseDebugLog('documentLoaded-after-renderCommentThreads', {
+            threadCount: commentThreadsRef.current.length,
+            annotationsAfterRender: getAnnotationManagerDebugData(instance),
+          })
+        })
+
+        documentViewer.addEventListener(
+          'pageNumberUpdated',
+          (pageNumber) => {
+            setCurrentPage(pageNumber)
+            scheduleCommentOverlayRefresh()
+          },
+        )
+
+        documentViewer.addEventListener('zoomUpdated', () => {
+          scheduleCommentOverlayRefresh()
+        })
+
+        documentViewer.addEventListener('fitModeUpdated', () => {
+          scheduleCommentOverlayRefresh()
+        })
+
+        documentViewer.addEventListener(
+          'textSelected',
+          (quads: AnyQuad[], text: string, pageNumber: number) => {
+            cacheTextSelection(quads, text, pageNumber)
+          },
+        )
+
+        annotationManager.addEventListener(
+          'annotationSelected',
+          (annotations: AnyAnnotation[], action: string) => {
+            if (action !== 'selected') return
+
+            const annotation = annotations.find((item) => {
+              const threadId = getThreadIdFromAnnotation(item)
+
+              return Boolean(threadId) && isCommentAnchor(item)
+            })
+
+            if (!annotation) return
+
+            const threadId = getThreadIdFromAnnotation(annotation)
+
+            if (!threadId) return
+
+            onCommentAnnotationClickRef.current?.(
+              threadId,
+              getAnnotationClientPosition(annotation),
+            )
+          },
+        )
+
+        bindCommentOverlayPositionListeners()
+      })
 
     return () => {
       disposed = true
@@ -374,6 +1646,17 @@ export const AprysePdfViewer = forwardRef<
       instanceRef.current?.UI.dispose?.()
       instanceRef.current = null
       activeContentEditorRef.current = null
+      editedRectsRef.current = []
+      temporaryAnchorIdRef.current = null
+      documentLoadedRef.current = false
+      pendingRenderThreadsRef.current = null
+      overlayPositionCleanupRef.current?.()
+      overlayPositionCleanupRef.current = null
+
+      if (overlayFrameRef.current !== null) {
+        cancelAnimationFrame(overlayFrameRef.current)
+        overlayFrameRef.current = null
+      }
     }
   }, [])
 
@@ -381,6 +1664,19 @@ export const AprysePdfViewer = forwardRef<
     const instance = instanceRef.current
 
     if (!instance || !fileUrl) return
+
+    editedRectsRef.current = []
+    documentLoadedRef.current = false
+    pendingRenderThreadsRef.current = commentThreadsRef.current
+    latestSelectionRef.current = null
+    setSelectionActionPosition(null)
+    setCommentMarkerOverlays([])
+
+    writeApryseDebugLog('loadDocument-start', {
+      fileUrl,
+      editedRectsAfterReset: editedRectsRef.current,
+      annotationsBeforeLoad: getAnnotationManagerDebugData(instance),
+    })
 
     instance.UI.loadDocument(fileUrl, {
       filename: fileUrl.split('/').pop() ?? 'document.pdf',
@@ -393,22 +1689,28 @@ export const AprysePdfViewer = forwardRef<
     if (!instance) return
 
     const { UI, Core } = instance
-    const { documentViewer } = Core
 
-    const contentEditManager =
-      getContentEditManager(instance)
+    const contentEditManager = getContentEditManager(instance)
 
     async function toggleContentEditMode() {
       if (isPdfEditing) {
+        editedRectsRef.current = []
+
+        await removeTemporaryCommentAnchor()
+        removeRenderedCommentAnchors('enter-edit-mode')
+
+        writeApryseDebugLog('contentEditMode-enter-start', {
+          hasContentEditManager: Boolean(contentEditManager),
+          editedRectsAfterReset: editedRectsRef.current,
+          annotations: getAnnotationManagerDebugData(instance),
+        })
+
         UI.enableFeatures([UI.Feature.ContentEdit])
 
-        await (Core as any).ContentEdit?.preloadWorker?.(
-          contentEditManager,
-        )
+        await (Core as any).ContentEdit?.preloadWorker?.(contentEditManager)
 
         const editTextToolbarGroup =
-          (UI.ToolbarGroup as any).EDIT_TEXT ??
-          (UI.ToolbarGroup as any).EDIT
+          (UI.ToolbarGroup as any).EDIT_TEXT ?? (UI.ToolbarGroup as any).EDIT
 
         UI.setToolbarGroup(editTextToolbarGroup)
 
@@ -417,10 +1719,44 @@ export const AprysePdfViewer = forwardRef<
         await waitFrame()
         await waitFrame()
         await wait(300)
+
+        writeApryseDebugLog('contentEditMode-enter-finished', {
+          currentPage: Core.documentViewer.getCurrentPage?.(),
+          hasContentEditManager: Boolean(contentEditManager),
+          editedRects: editedRectsRef.current,
+          annotations: getAnnotationManagerDebugData(instance),
+        })
       } else {
+        writeApryseDebugLog('contentEditMode-exit-start', {
+          editedRectsBeforeExit: editedRectsRef.current,
+          annotations: getAnnotationManagerDebugData(instance),
+        })
+
         activeContentEditorRef.current = null
 
         await endContentEditMode(instance)
+
+        const skippedStaleCommentRestore =
+          skipNextEditExitCommentRestoreRef.current
+
+        if (skippedStaleCommentRestore) {
+          removeRenderedCommentAnchors('exit-edit-after-save-skip-stale-restore')
+          await renderCommentThreads(
+            getThreadsWithOptimisticPointMarkers(
+              lastDegradedAnnotationIdsRef.current,
+            ),
+          )
+          lastDegradedAnnotationIdsRef.current = []
+          skipNextEditExitCommentRestoreRef.current = false
+        } else {
+          await renderCommentThreads(commentThreadsRef.current)
+        }
+
+        writeApryseDebugLog('contentEditMode-exit-finished', {
+          editedRectsAfterExit: editedRectsRef.current,
+          skippedStaleCommentRestore,
+          annotations: getAnnotationManagerDebugData(instance),
+        })
       }
     }
 
@@ -449,9 +1785,12 @@ export const AprysePdfViewer = forwardRef<
 
       const { documentViewer } = instance.Core
 
-      /**
-       * 1. Thử blur editor Apryse đang active nếu event bắt được editor.
-       */
+      writeApryseDebugLog('exportEditedPdf-start', {
+        editedRectsAtStart: editedRectsRef.current,
+        hasActiveContentEditor: Boolean(activeContentEditorRef.current),
+        annotationsAtStart: getAnnotationManagerDebugData(instance),
+      })
+
       try {
         await activeContentEditorRef.current?.blur?.()
       } catch (error) {
@@ -462,26 +1801,60 @@ export const AprysePdfViewer = forwardRef<
       await waitFrame()
       await wait(150)
 
-      /**
-       * 2. Thử stop tất cả ContentBox lấy từ placeholder annotations.
-       */
+      writeApryseDebugLog('exportEditedPdf-after-blur', {
+        editedRectsAfterBlur: editedRectsRef.current,
+        annotationsAfterBlur: getAnnotationManagerDebugData(instance),
+      })
+
       await stopAllContentBoxEditing(instance)
 
-      /**
-       * 3. Vì app đang dùng Web Component, click vào shadowRoot,
-       * không query iframe nữa.
-       */
+      writeApryseDebugLog('exportEditedPdf-after-stopContentBoxEditing-1', {
+        editedRects: editedRectsRef.current,
+        annotations: getAnnotationManagerDebugData(instance),
+      })
+
       await clickInsideApryseShadowRoot(viewerElement)
 
-      /**
-       * 4. Sau khi click outside, stop lại lần nữa để bắt state mới nhất.
-       */
+      writeApryseDebugLog('exportEditedPdf-after-shadow-click', {
+        editedRects: editedRectsRef.current,
+        annotations: getAnnotationManagerDebugData(instance),
+      })
+
       await stopAllContentBoxEditing(instance)
 
-      /**
-       * 5. Đóng Content Edit mode rồi export PDF.
-       */
+      writeApryseDebugLog('exportEditedPdf-after-stopContentBoxEditing-2', {
+        editedRects: editedRectsRef.current,
+        annotations: getAnnotationManagerDebugData(instance),
+      })
+
+      const liveContentEditRects = collectContentEditAnnotationRects(instance)
+      const finalEditedRects = dedupeEditedRects([
+        ...editedRectsRef.current,
+        ...liveContentEditRects,
+      ])
+      const degradedAnnotationIds = collectDegradedCommentAnnotationIds(
+        instance,
+        finalEditedRects,
+      )
+
+      editedRectsRef.current = finalEditedRects
+      skipNextEditExitCommentRestoreRef.current = true
+      lastDegradedAnnotationIdsRef.current = degradedAnnotationIds
+
+      writeApryseDebugLog('exportEditedPdf-before-endContentEditMode-snapshot', {
+        liveContentEditRects,
+        finalEditedRects,
+        degradedAnnotationIds,
+        annotations: getAnnotationManagerDebugData(instance),
+      })
+
       await endContentEditMode(instance)
+
+      writeApryseDebugLog('exportEditedPdf-after-endContentEditMode', {
+        editedRects: finalEditedRects,
+        degradedAnnotationIds,
+        annotations: getAnnotationManagerDebugData(instance),
+      })
 
       documentViewer.refreshAll?.()
       documentViewer.updateView?.()
@@ -494,13 +1867,51 @@ export const AprysePdfViewer = forwardRef<
 
       if (!doc) return null
 
-      const fileData = await doc.getFileData({
-        downloadType: 'pdf',
+      const commentAnchorsBeforePdfExport = removeRenderedCommentAnchors(
+        'before-pdf-export',
+      )
+
+      writeApryseDebugLog('exportEditedPdf-before-remove-comment-anchors', {
+        commentAnchorsToRemove: commentAnchorsBeforePdfExport.map(
+          (annotation: AnyAnnotation) => getAnnotationDebugData(annotation),
+        ),
+        annotationsAfterRemove: getAnnotationManagerDebugData(instance),
       })
 
-      return new Blob([new Uint8Array(fileData)], {
+      let fileData: ArrayBuffer
+
+      try {
+        fileData = await doc.getFileData({
+          downloadType: 'pdf',
+        })
+      } finally {
+        if (!isPdfEditingRef.current) {
+          await renderCommentThreads(commentThreadsRef.current)
+        }
+
+        writeApryseDebugLog('exportEditedPdf-after-export-cleanup', {
+          restoredCommentAnchors: !isPdfEditingRef.current,
+          threadCount: commentThreadsRef.current.length,
+          annotationsAfterExport: getAnnotationManagerDebugData(instance),
+        })
+      }
+
+      const file = new Blob([new Uint8Array(fileData)], {
         type: 'application/pdf',
+      });
+
+      writeApryseDebugLog('exportEditedPdf-finished', {
+        editedRects: finalEditedRects,
+        degradedAnnotationIds,
+        fileSize: file.size,
+        annotationsAtFinish: getAnnotationManagerDebugData(instance),
       })
+
+      return {
+        file,
+        editedRects: finalEditedRects,
+        degradedAnnotationIds,
+      }
     },
 
     reloadOriginalPdf() {
@@ -509,11 +1920,17 @@ export const AprysePdfViewer = forwardRef<
       if (!instance || !fileUrl) return
 
       activeContentEditorRef.current = null
+      editedRectsRef.current = []
 
       instance.UI.loadDocument(fileUrl, {
         filename: fileUrl.split('/').pop() ?? 'document.pdf',
       })
     },
+
+    renderCommentThreads,
+    scrollToCommentAnnotation,
+    highlightCommentAnnotation,
+    removeTemporaryCommentAnchor,
   }))
 
   return (
@@ -521,6 +1938,15 @@ export const AprysePdfViewer = forwardRef<
       <div className="min-h-0 flex-1 overflow-hidden">
         <div ref={viewerRef} className="h-full w-full" />
       </div>
+
+      <CommentAnnotationOverlayLayer
+        hidden={isCommentOverlayHidden()}
+        selectionActionPosition={selectionActionPosition}
+        markers={commentMarkerOverlays}
+        activeAnnotationId={selectedCommentAnnotationId}
+        onAddComment={createPendingCommentAnchor}
+        onMarkerClick={handleOverlayMarkerClick}
+      />
 
       <PdfPageControls
         currentPage={currentPage}

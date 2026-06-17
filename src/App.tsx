@@ -22,6 +22,7 @@ import { NotfoundPage } from './pages/error/NotfoundPage';
 import { WorkspaceDocumentDetailPage } from './pages/document-details/DocumentDetailPage';
 import { SharedWithMePage } from './pages/share-with-me/ShareWithMePage';
 import { SharedDocumentDetailPage } from './pages/share-with-me-details/SharedDocumentDetail';
+import { CommentUiTestPage } from './pages/dev/CommentTest';
 
 function App() {
   return (
@@ -91,6 +92,8 @@ function App() {
           path="/shared-with-me/documents/:documentId"
           element={<SharedDocumentDetailPage />}
         />
+
+        <Route path="/__dev/comment-ui" element={<CommentUiTestPage />} />
 
         <Route path="/403" element={<ForrbiddenPage />} />
         <Route path="/404" element={<NotfoundPage />} />

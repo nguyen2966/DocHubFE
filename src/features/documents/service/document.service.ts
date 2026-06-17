@@ -18,6 +18,7 @@ import type {
   ShareDocumentAccessResponse,
   ShareRole,
 } from '../types/document.type'
+import type { EditedRect } from '../../comments/types/comment.type'
 
 
 const basePath = (workspaceId: string) =>
@@ -135,9 +136,26 @@ export const documentService = {
     await api.delete(`${basePath(workspaceId)}/${documentId}/members/${userId}`)
   },
 
-  async editPdf(workspaceId: string, documentId: string, file: Blob): Promise<Document> {
+  async editPdf(
+    workspaceId: string,
+    documentId: string,
+    file: Blob,
+    editedRects: EditedRect[] = [],
+    degradedAnnotationIds: string[] = [],
+  ): Promise<Document> {
     const formData = new FormData()
     formData.append('file', file, 'edited.pdf')
+
+    if (editedRects.length > 0) {
+      formData.append('editedRects', JSON.stringify(editedRects))
+    }
+
+    if (degradedAnnotationIds.length > 0) {
+      formData.append(
+        'degradedAnnotationIds',
+        JSON.stringify(degradedAnnotationIds),
+      )
+    }
 
     const response = await api.patch<Document>(
       `${basePath(workspaceId)}/${documentId}/content`,
