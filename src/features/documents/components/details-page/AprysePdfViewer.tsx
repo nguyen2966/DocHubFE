@@ -31,12 +31,14 @@ interface AprysePdfViewerProps {
 
   commentThreads?: CommentThread[]
   selectedCommentAnnotationId?: string | null
+  hiddenCommentAvatarMarkerId?: string | null
   commentsDisabled?: boolean
   showCommentAvatarMarkers?: boolean
 
   onCommentAnnotationClick?: (
     annotationId: string,
     clientPosition: { x: number; y: number },
+    source?: 'marker' | 'annotation',
   ) => void
 
   onPendingCommentAnchorCreated?: (
@@ -859,6 +861,7 @@ export const AprysePdfViewer = forwardRef<
     isPdfEditing,
     commentThreads = [],
     selectedCommentAnnotationId,
+    hiddenCommentAvatarMarkerId,
     commentsDisabled,
     showCommentAvatarMarkers = true,
     onCommentAnnotationClick,
@@ -1968,6 +1971,7 @@ export const AprysePdfViewer = forwardRef<
     onCommentAnnotationClickRef.current?.(
       annotationId,
       getMarkerClientPosition(markerElement),
+      'marker',
     )
   }
 
@@ -1990,6 +1994,7 @@ export const AprysePdfViewer = forwardRef<
       onCommentAnnotationClickRef.current?.(
         annotationId,
         getMarkerClientPosition(markerElement),
+        'annotation',
       )
 
       window.setTimeout(() => {
@@ -2253,6 +2258,7 @@ export const AprysePdfViewer = forwardRef<
               onCommentAnnotationClickRef.current?.(
                 threadId,
                 getAnnotationClientPosition(avatarMarker),
+                'marker',
               )
               return
             }
@@ -2277,6 +2283,7 @@ export const AprysePdfViewer = forwardRef<
             onCommentAnnotationClickRef.current?.(
               threadId,
               markerClientPosition ?? getAnnotationClientPosition(annotation),
+              'annotation',
             )
           },
         )
@@ -2604,6 +2611,7 @@ export const AprysePdfViewer = forwardRef<
             selectionActionPosition={selectionActionPosition}
             markers={commentMarkerOverlays}
             activeAnnotationId={selectedCommentAnnotationId}
+            hiddenAnnotationId={hiddenCommentAvatarMarkerId}
             onAddComment={createPendingCommentAnchor}
             onMarkerClick={handleOverlayMarkerClick}
             onMarkerHover={handleOverlayMarkerHover}
