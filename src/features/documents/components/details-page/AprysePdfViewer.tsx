@@ -107,13 +107,6 @@ type ApryseWebComponentElement = HTMLElement & {
   shadowRoot: ShadowRoot | null
 }
 
-type PageRect = {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
 type PagePoint = {
   pageNumber: number
   x: number
@@ -126,7 +119,7 @@ type PageBoundAvatarMarker = {
   annotationId: string
   thread: CommentThread
   pageNumber: number
-  pageRect: PageRect
+  anchor: { x: number; y: number }
   source: AvatarMarkerSource
 }
 
@@ -156,9 +149,6 @@ const COMMENT_MARKER_SIZE = 36
 const COMMENT_MARKER_OVERLAY_GAP = 8
 const SELECTION_ACTION_OVERLAY_GAP = 12
 const LOCKED_PDF_ZOOM = 1.25
-const AVATAR_MARKER_WIDTH_PAGE = COMMENT_MARKER_SIZE / LOCKED_PDF_ZOOM
-const AVATAR_MARKER_HEIGHT_PAGE = COMMENT_MARKER_SIZE / LOCKED_PDF_ZOOM
-const AVATAR_MARKER_GAP_PAGE = COMMENT_MARKER_OVERLAY_GAP / LOCKED_PDF_ZOOM
 const ZOOM_LOCK_ENABLED = true
 const APRYSE_ZOOM_UI_ELEMENTS = [
   'zoomOverlayButton',
@@ -283,32 +273,6 @@ function findApryseScrollContainer(viewerElement: HTMLDivElement) {
   }
 
   return null
-}
-
-function normalizeAprysePointToClient(
-  viewerElement: HTMLDivElement | null,
-  point: { x: number; y: number },
-) {
-  if (!viewerElement) return point
-
-  const viewerRect = viewerElement.getBoundingClientRect()
-
-  const alreadyClientPosition =
-    point.x >= viewerRect.left - 8 &&
-    point.x <= viewerRect.right + 8 &&
-    point.y >= viewerRect.top - 8 &&
-    point.y <= viewerRect.bottom + 8
-
-  if (alreadyClientPosition) {
-    return point
-  }
-
-  const scrollContainer = findApryseScrollContainer(viewerElement)
-
-  return {
-    x: viewerRect.left + point.x - (scrollContainer?.scrollLeft ?? 0),
-    y: viewerRect.top + point.y - (scrollContainer?.scrollTop ?? 0),
-  }
 }
 
 async function clickInsideApryseShadowRoot(viewerElement: HTMLDivElement) {
@@ -724,14 +688,14 @@ function readRectLikeForDebug(value: any) {
     pageIndex: getFiniteNumber(value.pageIndex, value.getPageIndex?.()),
     rect: rect
       ? {
-          keys: getDebugKeys(rect),
-          x1: getFiniteNumber(rect.x1, rect.getX1?.()),
-          y1: getFiniteNumber(rect.y1, rect.getY1?.()),
-          x2: getFiniteNumber(rect.x2, rect.getX2?.()),
-          y2: getFiniteNumber(rect.y2, rect.getY2?.()),
-          width: getFiniteNumber(rect.width, rect.getWidth?.()),
-          height: getFiniteNumber(rect.height, rect.getHeight?.()),
-        }
+        keys: getDebugKeys(rect),
+        x1: getFiniteNumber(rect.x1, rect.getX1?.()),
+        y1: getFiniteNumber(rect.y1, rect.getY1?.()),
+        x2: getFiniteNumber(rect.x2, rect.getX2?.()),
+        y2: getFiniteNumber(rect.y2, rect.getY2?.()),
+        width: getFiniteNumber(rect.width, rect.getWidth?.()),
+        height: getFiniteNumber(rect.height, rect.getHeight?.()),
+      }
       : null,
     x: getFiniteNumber(value.X, value.x),
     y: getFiniteNumber(value.Y, value.y),
@@ -805,7 +769,7 @@ function writeApryseDebugLog(label: string, data: unknown) {
 function isCommentAnchor(annotation: AnyAnnotation) {
   return (
     annotation?.getCustomData?.(COMMENT_ANCHOR_TYPE_KEY) ===
-      COMMENT_ANCHOR_TYPE ||
+    COMMENT_ANCHOR_TYPE ||
     annotation?.getCustomData?.(DOC_HUB_MANAGED_KEY) === 'true'
   )
 }
@@ -814,7 +778,7 @@ function isTemporaryCommentAnchor(annotation: AnyAnnotation) {
   return (
     annotation?.getCustomData?.(TEMPORARY_ANCHOR_KEY) === 'true' ||
     annotation?.getCustomData?.(DOC_HUB_KIND_KEY) ===
-      DOC_HUB_KIND_PENDING_COMMENT_HIGHLIGHT
+    DOC_HUB_KIND_PENDING_COMMENT_HIGHLIGHT
   )
 }
 
@@ -1155,34 +1119,18 @@ export const AprysePdfViewer = forwardRef<
   }
 
   function getAnnotationClientPosition(annotation: AnyAnnotation) {
-    const instance = instanceRef.current
-    const viewerElement = viewerRef.current
+    const pagePoint = getAnnotationRightMiddlePagePoint(annotation)
+    const clientPoint = pagePoint
+      ? pagePointToClientPoint(pagePoint.pageNumber, pagePoint)
+      : null
 
-    if (!instance) {
-      return { x: 24, y: 160 }
-    }
+    if (clientPoint) return clientPoint
 
-    try {
-      const displayMode = instance.Core.documentViewer
-        .getDisplayModeManager()
-        .getDisplayMode()
+    const rect = viewerRef.current?.getBoundingClientRect()
 
-      const point = displayMode.pageToWindow(
-        {
-          x: annotation.X + annotation.Width,
-          y: annotation.Y + annotation.Height / 2,
-        },
-        annotation.PageNumber,
-      )
-
-      return normalizeAprysePointToClient(viewerElement, point)
-    } catch {
-      const rect = viewerElement?.getBoundingClientRect()
-
-      return {
-        x: (rect?.left ?? 0) + 24,
-        y: (rect?.top ?? 0) + 140,
-      }
+    return {
+      x: (rect?.left ?? 0) + 24,
+      y: (rect?.top ?? 0) + 140,
     }
   }
 
@@ -1239,11 +1187,11 @@ export const AprysePdfViewer = forwardRef<
     pageSize: { width: number; height: number } | null,
   ) {
     console.warn(
-      '[DocHub marker] Invalid pageRect source; refusing to render viewport-based marker',
+      '[DocHub marker] Invalid page anchor source; refusing to render marker',
       {
         annotationId: marker.annotationId,
         pageNumber: marker.pageNumber,
-        pageRect: marker.pageRect,
+        anchor: marker.anchor,
         pageSize,
         source: marker.source,
         reason,
@@ -1254,18 +1202,12 @@ export const AprysePdfViewer = forwardRef<
   function isValidPageBoundAvatarMarker(marker: PageBoundAvatarMarker) {
     const instance = instanceRef.current
     const pageCount = instance?.Core.documentViewer.getPageCount?.() ?? null
-    const { pageNumber, pageRect } = marker
-    const values = [
-      pageNumber,
-      pageRect.x,
-      pageRect.y,
-      pageRect.width,
-      pageRect.height,
-    ]
+    const { pageNumber, anchor } = marker
+    const values = [pageNumber, anchor.x, anchor.y]
     const pageSize = getPageSize(pageNumber)
 
     if (!values.every((value) => Number.isFinite(value))) {
-      warnInvalidAvatarMarkerSource(marker, 'non-finite-page-rect', pageSize)
+      warnInvalidAvatarMarkerSource(marker, 'non-finite-page-anchor', pageSize)
       return false
     }
 
@@ -1274,93 +1216,62 @@ export const AprysePdfViewer = forwardRef<
       return false
     }
 
-    if (pageRect.width <= 0 || pageRect.height <= 0) {
-      warnInvalidAvatarMarkerSource(marker, 'non-positive-marker-size', pageSize)
-      return false
-    }
-
     if (!pageSize) return true
 
-    const margin = Math.max(pageRect.width, pageRect.height, 100)
-    const tooWide = pageRect.width > pageSize.width * 0.25
-    const tooTall = pageRect.height > pageSize.height * 0.25
+    const margin = 100
     const outOfPageRange =
-      pageRect.x < -margin ||
-      pageRect.y < -margin ||
-      pageRect.x > pageSize.width + margin ||
-      pageRect.y > pageSize.height + margin
+      anchor.x < -margin ||
+      anchor.y < -margin ||
+      anchor.x > pageSize.width + margin ||
+      anchor.y > pageSize.height + margin
 
-    if (tooWide || tooTall || outOfPageRange) {
-      warnInvalidAvatarMarkerSource(
-        marker,
-        tooWide || tooTall ? 'marker-size-too-large' : 'marker-outside-page-range',
-        pageSize,
-      )
+    if (outOfPageRange) {
+      warnInvalidAvatarMarkerSource(marker, 'anchor-outside-page-range', pageSize)
       return false
     }
 
     return true
   }
 
-  function pageRectToOverlayRect(
+  function pagePointToOverlayPoint(
     pageNumber: number,
-    pageRect: PageRect,
-  ): OverlayRect | null {
+    pagePoint: { x: number; y: number },
+  ) {
     const instance = instanceRef.current
     const viewerElement = viewerRef.current
-    const overlayElement = overlayRef.current
 
-    if (!instance || !overlayElement) return null
+    if (!instance || !viewerElement) return null
 
     try {
       const displayMode = instance.Core.documentViewer
         .getDisplayModeManager()
         .getDisplayMode()
-      const overlayBounds = overlayElement.getBoundingClientRect()
-      const x1 = pageRect.x
-      const y1 = pageRect.y
-      const x2 = pageRect.x + pageRect.width
-      const y2 = pageRect.y + pageRect.height
-      const clientStart = normalizeAprysePointToClient(
-        viewerElement,
-        displayMode.pageToWindow({ x: x1, y: y1 }, pageNumber),
-      )
-      const clientEnd = normalizeAprysePointToClient(
-        viewerElement,
-        displayMode.pageToWindow({ x: x2, y: y2 }, pageNumber),
-      )
-      const left = Math.min(clientStart.x, clientEnd.x) - overlayBounds.left
-      const top = Math.min(clientStart.y, clientEnd.y) - overlayBounds.top
-      const right = Math.max(clientStart.x, clientEnd.x) - overlayBounds.left
-      const bottom = Math.max(clientStart.y, clientEnd.y) - overlayBounds.top
+      const scrollContainer = findApryseScrollContainer(viewerElement)
+      const point = displayMode.pageToWindow(pagePoint, pageNumber)
 
       return {
-        left,
-        top,
-        width: right - left,
-        height: bottom - top,
+        x: point.x - (scrollContainer?.scrollLeft ?? 0),
+        y: point.y - (scrollContainer?.scrollTop ?? 0),
       }
     } catch {
       return null
     }
   }
 
-  function pagePointToOverlayPoint(
+  function pagePointToClientPoint(
     pageNumber: number,
     pagePoint: { x: number; y: number },
   ) {
-    const overlayRect = pageRectToOverlayRect(pageNumber, {
-      x: pagePoint.x,
-      y: pagePoint.y,
-      width: 0,
-      height: 0,
-    })
+    const overlayPoint = pagePointToOverlayPoint(pageNumber, pagePoint)
+    const overlayElement = overlayRef.current
 
-    if (!overlayRect) return null
+    if (!overlayPoint || !overlayElement) return null
+
+    const overlayBounds = overlayElement.getBoundingClientRect()
 
     return {
-      x: overlayRect.left,
-      y: overlayRect.top,
+      x: overlayBounds.left + overlayPoint.x,
+      y: overlayBounds.top + overlayPoint.y,
     }
   }
 
@@ -1370,33 +1281,22 @@ export const AprysePdfViewer = forwardRef<
     return annotation.visualState ?? (annotation.xfdf ? 'highlight' : 'point')
   }
 
-  function pagePointToAvatarMarkerRect(point: { x: number; y: number }) {
-    return {
-      x: point.x + AVATAR_MARKER_GAP_PAGE,
-      y: point.y - AVATAR_MARKER_HEIGHT_PAGE / 2,
-      width: AVATAR_MARKER_WIDTH_PAGE,
-      height: AVATAR_MARKER_HEIGHT_PAGE,
-    }
-  }
-
   function getThreadPageBoundAvatarMarker(
     thread: CommentThread,
   ): PageBoundAvatarMarker | null {
-    const { annotation } = thread
-    const visualState = getThreadVisualState(thread)
-
+    const { annotation } = thread;
+    const visualState = getThreadVisualState(thread);
+    const importedHighlight = findCommentAnnotation(annotation._id);
+    const highlightAnchor = importedHighlight
+      ? getAnnotationRightMiddlePagePoint(importedHighlight)
+      : null;
     if (visualState === 'highlight') {
-      const importedHighlight = findCommentAnnotation(annotation._id)
-      const highlightAnchor = importedHighlight
-        ? getAnnotationRightMiddlePagePoint(importedHighlight)
-        : null
-
       if (highlightAnchor) {
         return {
           annotationId: annotation._id,
           thread,
           pageNumber: highlightAnchor.pageNumber,
-          pageRect: pagePointToAvatarMarkerRect(highlightAnchor),
+          anchor: { x: highlightAnchor.x, y: highlightAnchor.y },
           source: 'imported-highlight',
         }
       }
@@ -1415,8 +1315,8 @@ export const AprysePdfViewer = forwardRef<
       annotationId: annotation._id,
       thread,
       pageNumber: annotation.pageNumber,
-      pageRect: pagePointToAvatarMarkerRect(annotation.position),
-      source: 'annotation-position',
+      anchor: { x: highlightAnchor?.x, y: highlightAnchor?.y },
+      source: 'imported-highlight',
     }
   }
 
@@ -1426,18 +1326,26 @@ export const AprysePdfViewer = forwardRef<
     if (!pageBoundMarker) return null
     if (!isValidPageBoundAvatarMarker(pageBoundMarker)) return null
 
-    const overlayRect = pageRectToOverlayRect(
+    const overlayPoint = pagePointToOverlayPoint(
       pageBoundMarker.pageNumber,
-      pageBoundMarker.pageRect,
+      pageBoundMarker.anchor,
     )
 
-    if (!overlayRect) return null
+    if (!overlayPoint) return null
+
+    const overlayRect = {
+      left: overlayPoint.x + COMMENT_MARKER_OVERLAY_GAP,
+      top: overlayPoint.y - COMMENT_MARKER_SIZE / 2,
+      width: COMMENT_MARKER_SIZE,
+      height: COMMENT_MARKER_SIZE,
+    }
 
     console.debug('[DocHub marker source]', {
       annotationId: pageBoundMarker.annotationId,
       source: pageBoundMarker.source,
       pageNumber: pageBoundMarker.pageNumber,
-      pageRect: pageBoundMarker.pageRect,
+      anchor: pageBoundMarker.anchor,
+      overlayPoint,
       overlayRect,
     })
 
@@ -1457,9 +1365,9 @@ export const AprysePdfViewer = forwardRef<
     const markerOverlay = getThreadMarkerOverlay(thread)
     const clientPosition = markerOverlay
       ? overlayPointToClientPoint({
-          x: markerOverlay.overlayRect.left + markerOverlay.overlayRect.width,
-          y: markerOverlay.overlayRect.top + markerOverlay.overlayRect.height / 2,
-        })
+        x: markerOverlay.overlayRect.left + markerOverlay.overlayRect.width,
+        y: markerOverlay.overlayRect.top + markerOverlay.overlayRect.height / 2,
+      })
       : null
 
     if (!clientPosition) return null
@@ -1497,18 +1405,18 @@ export const AprysePdfViewer = forwardRef<
     setSelectionActionPosition(
       selection
         ? (() => {
-            const overlayPoint = pagePointToOverlayPoint(
-              selection.pageNumber,
-              selection.position,
-            )
+          const overlayPoint = pagePointToOverlayPoint(
+            selection.pageNumber,
+            selection.position,
+          )
 
-            return overlayPoint
-              ? {
-                  x: overlayPoint.x + SELECTION_ACTION_OVERLAY_GAP,
-                  y: overlayPoint.y - SELECTION_ACTION_OVERLAY_GAP,
-                }
-              : null
-          })()
+          return overlayPoint
+            ? {
+              x: overlayPoint.x + SELECTION_ACTION_OVERLAY_GAP,
+              y: overlayPoint.y - SELECTION_ACTION_OVERLAY_GAP,
+            }
+            : null
+        })()
         : null,
     )
 
@@ -1573,12 +1481,12 @@ export const AprysePdfViewer = forwardRef<
     return commentThreadsRef.current.map((thread) =>
       degradedIds.has(thread.annotation._id)
         ? {
-            ...thread,
-            annotation: {
-              ...thread.annotation,
-              visualState: 'point' as const,
-            },
-          }
+          ...thread,
+          annotation: {
+            ...thread.annotation,
+            visualState: 'point' as const,
+          },
+        }
         : thread,
     )
   }
@@ -1716,27 +1624,15 @@ export const AprysePdfViewer = forwardRef<
     pageNumber: number,
     position: { x: number; y: number },
   ) {
-    const instance = instanceRef.current
-    const viewerElement = viewerRef.current
+    const clientPoint = pagePointToClientPoint(pageNumber, position)
 
-    if (!instance) {
-      return { x: 24, y: 160 }
-    }
+    if (clientPoint) return clientPoint
 
-    try {
-      const displayMode = instance.Core.documentViewer
-        .getDisplayModeManager()
-        .getDisplayMode()
-      const point = displayMode.pageToWindow(position, pageNumber)
+    const rect = viewerRef.current?.getBoundingClientRect()
 
-      return normalizeAprysePointToClient(viewerElement, point)
-    } catch {
-      const rect = viewerElement?.getBoundingClientRect()
-
-      return {
-        x: (rect?.left ?? 0) + 24,
-        y: (rect?.top ?? 0) + 140,
-      }
+    return {
+      x: (rect?.left ?? 0) + 24,
+      y: (rect?.top ?? 0) + 140,
     }
   }
 
