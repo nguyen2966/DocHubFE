@@ -8,6 +8,7 @@ import type {
 import type {
   CreateMarkdownDocumentPayload,
   Document,
+  DocumentListResponse,
   DocumentMember,
   RenameDocumentPayload,
   ShareDocumentPayload,
@@ -28,8 +29,13 @@ const documentPath = (workspaceId: string, documentId: string) =>
   `/workspaces/${workspaceId}/documents/${documentId}`
 
 export const documentService = {
-  async getDocuments(workspaceId: string): Promise<Document[]> {
-    const res = await api.get<Document[]>(basePath(workspaceId))
+  async getDocuments(
+    workspaceId: string,
+    params?: { page?: number; limit?: number },
+  ): Promise<DocumentListResponse> {
+    const res = await api.get<DocumentListResponse>(basePath(workspaceId), {
+      params,
+    })
     return res.data
   },
 

@@ -1,7 +1,7 @@
 import api from '../../../shared/lib/axios';
 import {
   Workspace,
-  PaginatedResponse,
+  WorkspaceListResponse,
   Member,
   UserSearchResult,
   InviteResult,
@@ -9,8 +9,8 @@ import {
 } from '../types/workspace.type';
 
 export const workspaceService = {
-  getWorkspaces(params?: { cursor?: string; limit?: number }) {
-    return api.get<PaginatedResponse<Workspace>>('/workspaces', {
+  getWorkspaces(params?: { page?: number; limit?: number }) {
+    return api.get<WorkspaceListResponse>('/workspaces', {
       params,
     }).then((res) => res.data)
   },

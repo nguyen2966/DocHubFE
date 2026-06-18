@@ -1,3 +1,5 @@
+import type { PagePaginatedResponse } from '../../../shared/types/pagination.type'
+
 export type DocumentSourceType = 'md_editor' | 'file_upload'
 
 export type DocumentProcessingStatus =
@@ -45,6 +47,8 @@ export interface Document {
   createdAt: string
   updatedAt: string
 }
+
+export type DocumentListResponse = PagePaginatedResponse<Document>
 
 export interface UploadPdfResponse extends Document {
   jobId: string;
