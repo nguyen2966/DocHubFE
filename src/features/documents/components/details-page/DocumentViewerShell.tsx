@@ -14,6 +14,7 @@ interface DocumentViewerShellProps {
   commentThreads?: CommentThread[]
   selectedCommentAnnotationId?: string | null
   commentsDisabled?: boolean
+  showCommentAvatarMarkers?: boolean
 
   onCommentAnnotationClick?: (
     annotationId: string,
@@ -26,7 +27,17 @@ interface DocumentViewerShellProps {
   ) => void
 }
 
-export function DocumentViewerShell({ document, isPdfEditing, viewerRef, commentThreads, selectedCommentAnnotationId, commentsDisabled, onCommentAnnotationClick, onPendingCommentAnchorCreated }: DocumentViewerShellProps) {
+export function DocumentViewerShell({
+  document,
+  isPdfEditing,
+  viewerRef,
+  commentThreads,
+  selectedCommentAnnotationId,
+  commentsDisabled,
+  showCommentAvatarMarkers,
+  onCommentAnnotationClick,
+  onPendingCommentAnchorCreated,
+}: DocumentViewerShellProps) {
   if (document.processingStatus === 'processing') {
     return (
       <div className="flex min-h-[600px] items-center justify-center bg-stone-50 text-sm text-stone-500">
@@ -61,6 +72,7 @@ export function DocumentViewerShell({ document, isPdfEditing, viewerRef, comment
     commentThreads={commentThreads}
     selectedCommentAnnotationId={selectedCommentAnnotationId}
     commentsDisabled={commentsDisabled}
+    showCommentAvatarMarkers={showCommentAvatarMarkers}
     onCommentAnnotationClick={onCommentAnnotationClick}
     onPendingCommentAnchorCreated={onPendingCommentAnchorCreated}
   />
