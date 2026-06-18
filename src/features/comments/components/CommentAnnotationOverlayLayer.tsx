@@ -4,6 +4,9 @@ import { SelectionCommentAction } from './SelectionCommentAction'
 
 export interface CommentMarkerOverlay {
   thread: CommentThread
+  pageNumber: number
+  pageRect: { x: number; y: number; width: number; height: number }
+  overlayRect: { x: number; y: number; width: number; height: number }
   position: { x: number; y: number }
 }
 
@@ -15,7 +18,15 @@ interface CommentAnnotationOverlayLayerProps {
   onAddComment: () => void | Promise<void>
   onMarkerClick: (
     thread: CommentThread,
-    position: { x: number; y: number },
+    markerElement: HTMLElement,
+  ) => void
+  onMarkerHover?: (
+    thread: CommentThread,
+    markerElement: HTMLElement,
+  ) => void
+  onMarkerElementChange?: (
+    thread: CommentThread,
+    markerElement: HTMLElement | null,
   ) => void
 }
 
@@ -26,6 +37,8 @@ export function CommentAnnotationOverlayLayer({
   hidden,
   onAddComment,
   onMarkerClick,
+  onMarkerHover,
+  onMarkerElementChange,
 }: CommentAnnotationOverlayLayerProps) {
   if (hidden) return null
 
@@ -45,6 +58,8 @@ export function CommentAnnotationOverlayLayer({
           position={marker.position}
           active={activeAnnotationId === marker.thread.annotation._id}
           onClick={onMarkerClick}
+          onHover={onMarkerHover}
+          onElementChange={onMarkerElementChange}
         />
       ))}
     </>
