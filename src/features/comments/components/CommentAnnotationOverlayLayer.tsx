@@ -15,6 +15,7 @@ interface CommentAnnotationOverlayLayerProps {
   selectionActionPosition: { x: number; y: number } | null
   markers: CommentMarkerOverlay[]
   activeAnnotationId?: string | null
+  hiddenAnnotationId?: string | null
   hidden?: boolean
   onAddComment: () => void | Promise<void>
   onMarkerClick: (
@@ -35,6 +36,7 @@ export function CommentAnnotationOverlayLayer({
   selectionActionPosition,
   markers,
   activeAnnotationId,
+  hiddenAnnotationId,
   hidden,
   onAddComment,
   onMarkerClick,
@@ -52,17 +54,19 @@ export function CommentAnnotationOverlayLayer({
         />
       )}
 
-      {markers.map((marker) => (
-        <CommentAnchorMarker
-          key={marker.thread.annotation._id}
-          thread={marker.thread}
-          overlayRect={marker.overlayRect}
-          active={activeAnnotationId === marker.thread.annotation._id}
-          onClick={onMarkerClick}
-          onHover={onMarkerHover}
-          onElementChange={onMarkerElementChange}
-        />
-      ))}
+      {markers
+        .filter((marker) => marker.thread.annotation._id !== hiddenAnnotationId)
+        .map((marker) => (
+          <CommentAnchorMarker
+            key={marker.thread.annotation._id}
+            thread={marker.thread}
+            overlayRect={marker.overlayRect}
+            active={activeAnnotationId === marker.thread.annotation._id}
+            onClick={onMarkerClick}
+            onHover={onMarkerHover}
+            onElementChange={onMarkerElementChange}
+          />
+        ))}
     </>
   )
 }

@@ -13,12 +13,14 @@ interface DocumentViewerShellProps {
 
   commentThreads?: CommentThread[]
   selectedCommentAnnotationId?: string | null
+  hiddenCommentAvatarMarkerId?: string | null
   commentsDisabled?: boolean
   showCommentAvatarMarkers?: boolean
 
   onCommentAnnotationClick?: (
     annotationId: string,
     clientPosition: { x: number; y: number },
+    source?: 'marker' | 'annotation',
   ) => void
 
   onPendingCommentAnchorCreated?: (
@@ -33,6 +35,7 @@ export function DocumentViewerShell({
   viewerRef,
   commentThreads,
   selectedCommentAnnotationId,
+  hiddenCommentAvatarMarkerId,
   commentsDisabled,
   showCommentAvatarMarkers,
   onCommentAnnotationClick,
@@ -71,6 +74,7 @@ export function DocumentViewerShell({
     isPdfEditing={isPdfEditing}
     commentThreads={commentThreads}
     selectedCommentAnnotationId={selectedCommentAnnotationId}
+    hiddenCommentAvatarMarkerId={hiddenCommentAvatarMarkerId}
     commentsDisabled={commentsDisabled}
     showCommentAvatarMarkers={showCommentAvatarMarkers}
     onCommentAnnotationClick={onCommentAnnotationClick}

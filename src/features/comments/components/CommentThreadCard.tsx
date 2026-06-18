@@ -2,6 +2,7 @@ import type {
   CommentTreeNode,
   CommentThread,
 } from '../utils/comment-tree.util'
+import type { ReactNode } from 'react'
 import {
   buildCommentTree,
 } from '../utils/comment-tree.util'
@@ -24,6 +25,25 @@ interface CommentBranchProps extends CommentThreadCardProps {
   depth: number
 }
 
+interface CommentTreeRowProps {
+  children: ReactNode
+  isLast: boolean
+}
+
+function CommentTreeRow({ children, isLast }: CommentTreeRowProps) {
+  return (
+    <div className="relative">
+      {isLast && (
+        <span className="pointer-events-none absolute -left-8 top-5 bottom-[-0.75rem] z-10 w-1 bg-white" />
+      )}
+
+      <span className="pointer-events-none absolute -left-8 top-0 z-20 h-5 w-8 rounded-bl-2xl border-b-2 border-l-2 border-stone-200" />
+
+      {children}
+    </div>
+  )
+}
+
 function CommentBranch({
   node,
   depth,
@@ -38,11 +58,12 @@ function CommentBranch({
   const editing = editingCommentId === comment._id
   const replying = replyingToCommentId === comment._id
   const isRoot = depth === 0
+  const hasChildRows = node.replies.length > 0 || replying
 
   return (
-    <div className={depth > 0 ? 'relative pl-5' : ''}>
-      {depth > 0 && (
-        <div className="absolute left-1 top-0 h-full w-px bg-stone-200" />
+    <div className="relative">
+      {hasChildRows && (
+        <span className="pointer-events-none absolute left-[13px] top-8 bottom-0 w-0.5 bg-stone-200" />
       )}
 
       <CommentItem
@@ -56,30 +77,36 @@ function CommentBranch({
         {...handlers}
       />
 
-      {replying && (
-        <div className="mt-3 pl-9">
-          <CommentReplyInput
-            autoFocus
-            onSubmit={(body) => onSubmitReply?.(comment, body, thread)}
-          />
-        </div>
-      )}
-
-      {node.replies.length > 0 && (
-        <div className="mt-3 space-y-3">
-          {node.replies.map((replyNode) => (
-            <CommentBranch
+      {hasChildRows && (
+        <div className="relative ml-[13px] mt-3 space-y-3 pl-8">
+          {node.replies.map((replyNode, index) => (
+            <CommentTreeRow
               key={replyNode.comment._id}
-              node={replyNode}
-              depth={depth + 1}
-              thread={thread}
-              currentUserId={currentUserId}
-              editingCommentId={editingCommentId}
-              replyingToCommentId={replyingToCommentId}
-              onSubmitReply={onSubmitReply}
-              {...handlers}
-            />
+              isLast={!replying && index === node.replies.length - 1}
+            >
+              <CommentBranch
+                node={replyNode}
+                depth={depth + 1}
+                thread={thread}
+                currentUserId={currentUserId}
+                editingCommentId={editingCommentId}
+                replyingToCommentId={replyingToCommentId}
+                onSubmitReply={onSubmitReply}
+                {...handlers}
+              />
+            </CommentTreeRow>
           ))}
+
+          {replying && (
+            <CommentTreeRow isLast>
+              <div className="pl-9">
+                <CommentReplyInput
+                  autoFocus
+                  onSubmit={(body) => onSubmitReply?.(comment, body, thread)}
+                />
+              </div>
+            </CommentTreeRow>
+          )}
         </div>
       )}
     </div>

@@ -119,6 +119,9 @@ export function WorkspaceDocumentDetailPage() {
 
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
+  const [hiddenAvatarMarkerId, setHiddenAvatarMarkerId] = useState<string | null>(
+    null,
+  )
 
   const [floatingThreadId, setFloatingThreadId] = useState<string | null>(null)
   const [floatingThreadPosition, setFloatingThreadPosition] = useState<{
@@ -161,6 +164,7 @@ export function WorkspaceDocumentDetailPage() {
     setFloatingThreadId(null)
     setFloatingThreadPosition(null)
     setFloatingThreadSource(null)
+    setHiddenAvatarMarkerId(null)
     setReplyingToCommentId(null)
     setEditingCommentId(null)
   }
@@ -174,6 +178,7 @@ export function WorkspaceDocumentDetailPage() {
 
   const closeCommentsSidebar = () => {
     setCommentsOpen(false)
+    setHiddenAvatarMarkerId(null)
 
     // Popup mở từ sidebar thuộc sidebar mode, đóng sidebar thì đóng luôn.
     if (floatingThreadSource === 'sidebar') {
@@ -215,6 +220,7 @@ export function WorkspaceDocumentDetailPage() {
   const handleDocumentAnnotationClick = (
     annotationId: string,
     clientPosition: { x: number; y: number },
+    source: 'marker' | 'annotation' = 'annotation',
   ) => {
     setSelectedThreadId(annotationId)
 
@@ -224,6 +230,7 @@ export function WorkspaceDocumentDetailPage() {
       return
     }
 
+    setHiddenAvatarMarkerId(source === 'marker' ? annotationId : null)
     setFloatingThreadId(annotationId)
     setFloatingThreadSource('anchor')
     setFloatingThreadPosition(getAnchorPopoverPosition(clientPosition))
@@ -407,6 +414,7 @@ export function WorkspaceDocumentDetailPage() {
                 viewerRef={apryseViewerRef}
                 commentThreads={commentThreads}
                 selectedCommentAnnotationId={selectedThreadId}
+                hiddenCommentAvatarMarkerId={hiddenAvatarMarkerId}
                 commentsDisabled={isPdfEditing}
                 showCommentAvatarMarkers={!commentsOpen}
                 onCommentAnnotationClick={handleDocumentAnnotationClick}
