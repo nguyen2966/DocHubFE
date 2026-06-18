@@ -1,20 +1,26 @@
-Update the PDF viewer behavior: disable zoom completely to stabilize React avatar markup rendering.
+Fix inconsistent avatar marker coordinate source after creating comments.
 
-Context:
-Avatar markup rendering became unstable because zoom changes require repeated projection/recalculation from PDF page coordinates into overlay coordinates. The current stable visual behavior is achieved at one fixed viewer scale. To reduce complexity and improve reliability, we now want to disable zoom in the PDF viewer.
+Current bug:
+On a completely new document, each created comment only renders one avatar marker. However, some markers behave correctly as page-bound markup, while some markers behave incorrectly as viewport-fixed markup when scrolling.
 
-Goal:
+This means the issue is not duplicate rendering.
 
-* User must not be able to zoom in/out.
-* PDF should render at one stable scale.
-* Avatar markup should be rendered relative to the PDF page at that stable scale.
-* Avatar markup should still behave like page-bound markup:
+Root cause to investigate:
+Some marker instances are probably created from PDF page coordinates, while others are created from viewport/client/overlay coordinates.
 
-  * attached to a specific page
-  * scrolls away with that page
-  * disappears naturally when its page scrolls out of view
-  * reappears when scrolling back
-* No zoom recalculation complexity is needed anymore.
+Correct behavior:
+Every persisted avatar marker must use the same source of truth:
+
+* pageNumber
+* pageRect in PDF page coordinates
+
+Never use viewport/client/overlay coordinates as the persisted marker source.
+
+Important distinction:
+
+* page coordinate / pageRect: used to render avatar marker.
+* clientPosition / DOMRect: used only to position CommentThreadPopover.
+* overlayRect: derived render output only, never source of truth.
 
 Scope:
 
@@ -22,250 +28,336 @@ Scope:
 * Do not modify BE.
 * Do not change API payload shape.
 * Do not change comment data model.
-* Keep native Apryse highlight rendering from XFDF.
-* Keep visualState authoritative over xfdf.
+* Keep locked zoom behavior.
+* Keep React page-bound avatar markup.
 * Do not use Apryse StampAnnotation for avatar markers.
-* Avatar marker should remain React-rendered markup.
-* CommentThreadPopover remains React fixed UI panel.
-* SelectionCommentAction should still work.
+* Do not reintroduce viewport-fixed avatar markers.
+* Keep native Apryse highlight rendering.
 
 Files to inspect/update:
 
 * src/features/documents/components/details-page/AprysePdfViewer.tsx
 * src/features/comments/components/CommentAnnotationOverlayLayer.tsx
 * src/features/comments/components/CommentAnchorMarker.tsx
-* src/features/documents/components/details-page/DocumentViewerShell.tsx
 * src/pages/document-details/DocumentDetailPage.tsx
+* any file involved in createPendingCommentAnchor / submit comment / pending anchor state
 
 Main requirement:
-Disable all user zoom paths in Apryse WebViewer.
+There must be exactly one coordinate pipeline for persisted avatar markers:
 
-This includes:
+PDF page coordinate/pageRect
+→ project to overlayRect for current viewer scroll/layout
+→ render React marker absolute inside viewer overlay
 
-1. Hide/remove zoom UI controls if present.
-2. Disable toolbar zoom in/out controls if present.
-3. Disable mouse wheel zoom / Ctrl + wheel zoom.
-4. Disable keyboard zoom shortcuts:
+There must be no path where persisted marker source is:
 
-   * Ctrl/Cmd + +
-   * Ctrl/Cmd + -
-   * Ctrl/Cmd + 0
-5. Disable pinch zoom if WebViewer exposes a supported API for it.
-6. Avoid fit modes that dynamically change zoom after initial render, unless absolutely necessary.
+* clientPosition
+* getBoundingClientRect
+* overlayPosition
+* pageToWindow output directly
+* mouse event x/y
+* SelectionCommentAction position
+* popover position
 
-Preferred viewer scale:
+1. Audit all marker creation paths
 
-* Use one fixed zoom level after document loaded.
-* Prefer a stable explicit zoom level such as 1.0 / 100%, or the current stable default if the app already sets one.
-* Do not allow user interaction to change it afterward.
-* If current viewer uses FitWidth/FitPage and that causes scale changes on resize, replace it with explicit zoom.
-* If exact 100% makes the PDF layout poor, choose one fixed project constant, e.g. DEFAULT_PDF_ZOOM = 1.0 or DEFAULT_PDF_ZOOM = current stable value, but keep it constant.
+Search for:
 
-Implementation guidance in AprysePdfViewer.tsx:
+* commentMarkerOverlays
+* projectedMarkers
+* pageAnchoredMarkers
+* pageRect
+* overlayRect
+* clientPosition
+* getSelectionClientPosition
+* getThreadMarkerClientPosition
+* getAnnotationClientPosition
+* createPendingCommentAnchor
+* handleSubmitComment
+* onCommentCreated
+* pendingCommentAnchor
+* pageToWindow
+* getBoundingClientRect
 
-1. Add constants:
+Find every place where an avatar marker is created or updated.
 
-const LOCKED_PDF_ZOOM = 1
-const ZOOM_LOCK_ENABLED = true
+For persisted avatar markers, remove any branch that uses client/viewport coordinates as marker source.
 
-2. After document is loaded, enforce locked zoom:
+2. Enforce marker model with explicit types
 
-* call the proper Apryse API to set zoom level to LOCKED_PDF_ZOOM.
-* do this once after documentLoaded.
-* also guard against later zoom changes if Apryse still emits zoomUpdated.
+Use types like:
 
-Pseudo:
+type PagePoint = {
+pageNumber: number
+x: number
+y: number
+}
 
-const enforceLockedZoom = () => {
-const instance = instanceRef.current
-if (!instance) return
+type PageRect = {
+x: number
+y: number
+width: number
+height: number
+}
 
-const { documentViewer } = instance.Core
+type PageBoundAvatarMarker = {
+annotationId: string
+thread: CommentThread
+pageNumber: number
+pageRect: PageRect
+}
 
-const currentZoom = documentViewer.getZoomLevel?.()
-if (currentZoom !== LOCKED_PDF_ZOOM) {
-documentViewer.setZoomLevel?.(LOCKED_PDF_ZOOM)
+type ProjectedAvatarMarker = PageBoundAvatarMarker & {
+overlayRect: {
+left: number
+top: number
+width: number
+height: number
 }
 }
 
-3. On zoomUpdated:
+Rules:
 
-* if zoom differs from LOCKED_PDF_ZOOM, immediately restore LOCKED_PDF_ZOOM.
-* avoid infinite loops with a ref:
+* PageBoundAvatarMarker is source.
+* ProjectedAvatarMarker is derived render state.
+* Never create PageBoundAvatarMarker from clientPosition or overlayRect.
+* Never save overlayRect back into pageRect.
 
-const isEnforcingZoomRef = useRef(false)
+3. Fix comment creation flow
 
-Pseudo:
-if (isEnforcingZoomRef.current) return
-if (currentZoom !== LOCKED_PDF_ZOOM) {
-isEnforcingZoomRef.current = true
-documentViewer.setZoomLevel(LOCKED_PDF_ZOOM)
-requestAnimationFrame(() => {
-isEnforcingZoomRef.current = false
+When user selects text and creates a comment:
+
+createPendingCommentAnchor should produce:
+
+* pageNumber
+* position in PDF page coordinates
+* xfdf if visualState is highlight
+* apryseAnnotationId
+* visualState
+
+The position must be derived from Apryse selection/page geometry, not from the Add Comment button position or mouse/client coordinates.
+
+If current code has something like:
+
+* selectionActionPosition
+* clientPosition
+* normalizedClientPosition
+* overlay position
+
+Do not use it for annotation.position.
+
+It can only be used for:
+
+* placing temporary Add Comment button
+* opening CommentComposer
+* opening CommentThreadPopover
+
+4. Build avatar marker only from thread annotation data or imported highlight geometry
+
+For each thread:
+
+const visualState =
+annotation.visualState ?? (annotation.xfdf ? "highlight" : "point")
+
+If visualState === "highlight" and imported highlight annotation exists:
+
+* use imported highlight geometry as primary source:
+
+pageNumber = importedHighlight.PageNumber
+anchorX = importedHighlight.X + importedHighlight.Width
+anchorY = importedHighlight.Y + importedHighlight.Height / 2
+
+If imported highlight geometry is unavailable:
+
+* fallback only to annotation.position if it is known to be PDF page coordinate.
+* never fallback to clientPosition.
+
+If visualState === "point":
+
+* use annotation.position and annotation.pageNumber.
+* skip stale xfdf.
+
+Then create pageRect from page coordinate constants:
+
+pageRect = {
+x: anchorX + AVATAR_MARKER_GAP_PAGE,
+y: anchorY - AVATAR_MARKER_HEIGHT_PAGE / 2,
+width: AVATAR_MARKER_WIDTH_PAGE,
+height: AVATAR_MARKER_HEIGHT_PAGE,
+}
+
+5. Add coordinate invariant guards
+
+Add development-only warnings when marker source looks suspicious.
+
+Example checks:
+
+* pageNumber must be >= 1
+* pageRect.x/y should be reasonable for page size
+* pageRect.width/height should be small page units, not huge viewport pixels
+* pageRect should not equal overlay/client coordinates
+
+If possible, get page dimensions from document:
+
+* page width / height
+* warn if x/y are outside a reasonable page range
+
+Example warning:
+
+console.warn('[DocHub marker] Invalid pageRect source; refusing to render viewport-based marker', {
+annotationId,
+pageNumber,
+pageRect,
+pageSize,
+source,
 })
-}
 
-4. Remove/hide zoom controls from Apryse UI.
+If pageRect is invalid, do not render marker rather than rendering a viewport-fixed marker.
 
-Inspect current Apryse UI setup and disable/remove:
+6. Project pageRect to overlayRect in exactly one helper
 
-* zoomOverlayButton
-* zoomInButton
-* zoomOutButton
-* zoom controls in header/toolbars
-* fit mode controls if they allow changing zoom
-* any hotkeys if configured
+Use one helper only:
 
-Use Apryse UI APIs already used in this file, e.g. disableElements/hideElements if available.
+pageRectToOverlayRect({
+pageNumber,
+rect,
+})
 
-Do not break:
+It should:
 
-* page navigation buttons
-* content edit button
-* comment button
-* share button
-* selection/comment interaction
+* take PDF page rect.
+* use Apryse pageToWindow for top-left and bottom-right.
+* convert to client coordinate if needed.
+* subtract overlayRoot.getBoundingClientRect().
+* return overlay-relative rect.
 
-5. Block browser/input zoom events inside viewer wrapper.
+This helper must be the only place where page coordinates become screen/overlay coordinates.
 
-At the viewer wrapper level:
+7. Do not persist or reuse overlayRect
 
-* add wheel listener with passive: false.
-* if event.ctrlKey or event.metaKey is true, preventDefault and stopPropagation.
-* add keydown listener:
+On scroll/page change:
 
-  * Ctrl/Cmd + '+'
-  * Ctrl/Cmd + '-'
-  * Ctrl/Cmd + '='
-  * Ctrl/Cmd + '0'
-    should preventDefault when focus is inside viewer/document area.
+* recompute overlayRect from original pageRect.
+* do not mutate pageRect.
+* do not use previous overlayRect as source.
 
-Do not block normal scrolling without Ctrl/Cmd.
-Scrolling must still work.
+On commentThreads refetch:
 
-6. Simplify avatar marker recomputation.
+* rebuild PageBoundAvatarMarker from annotation/page geometry.
+* project again.
 
-Since zoom is locked:
+8. Pending/new comment marker behavior
 
-* Marker overlay should not need complex zoom recalculation.
-* Still compute marker position from pageNumber + PDF page coordinate.
-* Still recompute on:
+After submitting a new comment:
 
-  * document loaded
-  * commentThreads change
-  * scroll
-  * page change
-  * viewer resize if needed
-  * sidebar visibility change
-* But do not support arbitrary zoom changes.
-* If zoomUpdated happens, enforce locked zoom and then recompute markers once.
+* clear pending composer state.
+* clear temporary selection UI.
+* do not render final avatar marker from pending client coordinates.
+* final marker should appear from:
 
-7. Avatar marker behavior.
+  * returned/refetched thread annotation data
+  * or imported highlight geometry tagged with the Mongo annotation id
 
-Avatar marker should be React-rendered page-bound markup:
+If there is an optimistic marker:
 
-* not Apryse StampAnnotation
-* not viewport fixed
-* not global floating UI
-* belongs to a pageNumber
-* uses page coordinate as source of truth
-* rendered in overlay relative to viewer/page projection at the locked zoom
+* it must also use pageRect derived from PDF page coordinate.
+* otherwise disable optimistic persisted marker and wait for refetch.
 
-When user scrolls:
+9. CommentAnchorMarker must not be fixed
 
-* marker moves with page content.
-* if its page scrolls out of viewport, marker disappears naturally.
-* when scrolling back, marker appears again.
+Verify persisted marker component:
 
-8. Sidebar visibility.
+* no position: fixed
+* no className fixed
+* no viewport left/top source
+* no clientPosition prop
 
-Use existing showCommentAvatarMarkers prop:
+It should receive only overlayRect:
 
-* DocumentDetailPage passes showCommentAvatarMarkers={!commentsOpen}
-* DocumentViewerShell forwards it
-* AprysePdfViewer receives it
+style={{
+position: 'absolute',
+left: overlayRect.left,
+top: overlayRect.top,
+width: overlayRect.width,
+height: overlayRect.height,
+}}
 
-When showCommentAvatarMarkers is false:
+10. CommentThreadPopover can still use clientPosition
 
-* no React avatar markers render.
-* highlights may remain visible.
+Popover is allowed to be viewport fixed.
 
-When showCommentAvatarMarkers is true:
+When user clicks marker:
 
-* render markers again from commentThreads/page coordinates.
+* use marker DOMRect to compute clientPosition:
+  rect.right
+  rect.top + rect.height / 2
 
-9. Remove obsolete StampAnnotation marker logic.
+This clientPosition is only for popover placement.
+Do not feed it back into avatar marker state.
 
-If previous implementation still has native avatar StampAnnotation logic:
+11. Add debugging log to prove the fix
 
-* do not create avatar StampAnnotations anymore.
-* keep one-time cleanup for legacy docHubKind === "avatar-marker" annotations if necessary.
-* remove export-specific cleanup that only existed for avatar StampAnnotations unless needed for legacy cleanup.
+Temporarily add a debug log when marker is built:
 
-10. Click behavior.
+console.debug('[DocHub marker source]', {
+annotationId,
+source: 'imported-highlight' | 'annotation-position',
+pageNumber,
+pageRect,
+overlayRect,
+})
 
-When user clicks avatar marker:
+Expected:
 
-* do not call Apryse selectAnnotation.
-* do not call highlightCommentAnnotation.
-* do not call documentViewer.refreshAll/updateView.
-* compute popover position from marker DOM rect:
+* Every marker should have source imported-highlight or annotation-position.
+* No marker should have source clientPosition, overlayPosition, DOMRect, or selectionButton.
 
-const rect = markerElement.getBoundingClientRect()
-const clientPosition = {
-x: rect.right,
-y: rect.top + rect.height / 2,
-}
+12. Manual test checklist
 
-* call existing onCommentAnnotationClick callback with annotationId and clientPosition.
+Create a new document and test:
 
-11. Native highlight click behavior.
+1. Create comment on selected text.
+2. Confirm exactly one marker appears.
+3. Scroll down:
 
-When user clicks native DocHub highlight:
+   * marker should move with PDF page.
+   * marker should disappear when its page area scrolls out of view.
+   * marker must not stay fixed on viewport.
+4. Create another comment on another text selection.
+5. Scroll:
 
-* get docHubAnnotationId.
-* prefer opening popover near the corresponding React avatar marker DOM rect.
-* fallback to projected page anchor if marker DOM is unavailable.
-* do not use generic viewer-left fallback for anchor mode.
+   * this marker must also behave page-bound.
+6. Repeat 5-10 times:
 
-12. Manual test checklist.
+   * every marker must behave the same way.
+   * no random marker should be viewport-fixed.
+7. Reload page:
 
-Test zoom lock:
+   * all persisted markers behave page-bound.
+8. Open sidebar:
 
-1. Mouse wheel scroll still works.
-2. Ctrl/Cmd + wheel does not zoom.
-3. Ctrl/Cmd + + does not zoom.
-4. Ctrl/Cmd + - does not zoom.
-5. Ctrl/Cmd + 0 does not zoom.
-6. Any Apryse zoom UI controls are hidden or disabled.
-7. Fit mode/zoom dropdown cannot change scale.
-8. After document load, zoom remains at LOCKED_PDF_ZOOM.
-9. After resize/page navigation, zoom remains locked unless intentionally unsupported.
+   * markers hidden.
+9. Close sidebar:
 
-Test avatar markers:
-10. Avatar markers render at stable correct position.
-11. Scrolling moves markers with the PDF page.
-12. Scrolling to another page makes previous page markers disappear from view.
-13. Scrolling back shows markers at the same place.
-14. Sidebar open hides avatar markers.
-15. Sidebar closed shows avatar markers again.
-16. Clicking marker opens CommentThreadPopover to the right of marker.
-17. Marker does not shift on click.
-18. visualState="point" still works.
-19. visualState="highlight" still imports native highlight.
-20. Export/save PDF does not include React avatar marker.
+   * markers reappear and remain page-bound.
+10. Click marker:
+
+* popover opens to right of marker.
+* marker does not shift.
+
+11. visualState point:
+
+* marker uses annotation.position.
+* still page-bound.
+
+12. Export/save:
+
+* React marker not included in PDF.
 
 Report after implementation:
 
-1. Files changed.
-2. Exact locked zoom value used.
-3. Which Apryse UI zoom elements were hidden/disabled.
-4. Which input paths were blocked:
-
-   * Ctrl/Cmd wheel
-   * Ctrl/Cmd +/-
-   * Ctrl/Cmd 0
-   * pinch if handled
-5. How zoom lock is enforced after documentLoaded and zoomUpdated.
-6. How avatar marker rendering was simplified after removing zoom support.
-7. Any remaining limitation or browser-specific note.
+1. Which coordinate path was causing viewport-fixed marker.
+2. Where clientPosition was incorrectly used as marker source, if found.
+3. How marker source is now forced to pageRect/page coordinate.
+4. Where pageRectToOverlayRect is used.
+5. Confirmation that persisted avatar marker no longer accepts clientPosition/overlayPosition as source.

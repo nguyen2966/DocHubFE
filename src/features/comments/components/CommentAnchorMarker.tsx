@@ -5,7 +5,7 @@ import { getRootComment, type CommentThread } from '../utils/comment-tree.util'
 
 interface CommentAnchorMarkerProps {
   thread: CommentThread
-  position: { x: number; y: number }
+  overlayRect: { left: number; top: number; width: number; height: number }
   active?: boolean
   onClick: (thread: CommentThread, markerElement: HTMLElement) => void
   onHover?: (thread: CommentThread, markerElement: HTMLElement) => void
@@ -17,7 +17,7 @@ interface CommentAnchorMarkerProps {
 
 export function CommentAnchorMarker({
   thread,
-  position,
+  overlayRect,
   active,
   onClick,
   onHover,
@@ -54,12 +54,14 @@ export function CommentAnchorMarker({
         onClick(thread, event.currentTarget)
       }}
       className={`
-        pointer-events-auto absolute z-40 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-2 bg-amber-100 text-[11px] font-semibold text-stone-800 shadow-lg transition hover:scale-105
+        pointer-events-auto absolute z-40 flex items-center justify-center overflow-hidden rounded-full border-2 bg-amber-100 text-[11px] font-semibold text-stone-800 shadow-lg transition hover:scale-105
         ${active ? 'border-blue-500 ring-4 ring-blue-500/20' : 'border-white'}
       `}
       style={{
-        left: position.x,
-        top: position.y,
+        left: overlayRect.left,
+        top: overlayRect.top,
+        width: overlayRect.width,
+        height: overlayRect.height,
       }}
     >
       <img
