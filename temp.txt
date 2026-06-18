@@ -1,275 +1,363 @@
-Implement Phase 1: Convert comment avatar marker rendering from React overlay to Apryse native annotation.
+Fix inconsistent avatar marker coordinate source after creating comments.
+
+Current bug:
+On a completely new document, each created comment only renders one avatar marker. However, some markers behave correctly as page-bound markup, while some markers behave incorrectly as viewport-fixed markup when scrolling.
+
+This means the issue is not duplicate rendering.
+
+Root cause to investigate:
+Some marker instances are probably created from PDF page coordinates, while others are created from viewport/client/overlay coordinates.
+
+Correct behavior:
+Every persisted avatar marker must use the same source of truth:
+
+* pageNumber
+* pageRect in PDF page coordinates
+
+Never use viewport/client/overlay coordinates as the persisted marker source.
+
+Important distinction:
+
+* page coordinate / pageRect: used to render avatar marker.
+* clientPosition / DOMRect: used only to position CommentThreadPopover.
+* overlayRect: derived render output only, never source of truth.
 
 Scope:
 
 * FE only.
 * Do not modify BE.
 * Do not change API payload shape.
-* Do not change comment thread data model.
-* Do not change DocumentDetailPage anchor-mode positioning yet; that is Phase 2.
-* Do not rewrite the whole Apryse viewer.
-* Apply targeted changes.
+* Do not change comment data model.
+* Keep locked zoom behavior.
+* Keep React page-bound avatar markup.
+* Do not use Apryse StampAnnotation for avatar markers.
+* Do not reintroduce viewport-fixed avatar markers.
+* Keep native Apryse highlight rendering.
 
-Goal:
-Currently comment avatar markers are rendered as React fixed overlays through CommentAnnotationOverlayLayer / CommentAnchorMarker. This is unstable because marker position depends on client coordinate conversion, scroll, zoom, and Apryse internal layout.
-
-Replace avatar marker rendering with an Apryse-managed annotation, preferably StampAnnotation using an existing image asset from the FE asset folder.
-
-Expected result:
-
-1. Existing highlight comments still render native Apryse highlight from XFDF.
-2. Each comment thread also renders an Apryse avatar marker annotation.
-3. Avatar marker appears to the right side of the comment highlight annotation.
-4. When annotation.visualState === "point", FE must not import stale XFDF highlight, but avatar marker must still render at annotation.position.
-5. Avatar marker should be part of Apryse annotation layer, so it follows PDF page coordinate, zoom, scroll, page change, and fit mode automatically.
-6. React CommentAnchorMarker overlay should no longer be used for persisted comment avatar markers.
-7. Add Comment button for new text selection should stay as React overlay for now.
-8. Comment composer / CommentThreadPopover can stay React. Phase 2 will refine popover position.
-
-Important existing behavior to preserve:
-
-* visualState remains authoritative over xfdf.
-* If visualState === "point", skip XFDF import even if xfdf still exists.
-* If visualState === "highlight" and xfdf exists, import XFDF highlight.
-* Avatar marker should render in both highlight and point states.
-* Do not reintroduce native ellipse/rectangle point markers.
-* Avatar marker must not be persisted to BE.
-* Avatar marker must not be baked/exported into the edited PDF.
-
-Files to inspect:
+Files to inspect/update:
 
 * src/features/documents/components/details-page/AprysePdfViewer.tsx
 * src/features/comments/components/CommentAnnotationOverlayLayer.tsx
 * src/features/comments/components/CommentAnchorMarker.tsx
-* src/features/comments/components/SelectionCommentAction.tsx
-* existing assets under src/assets or equivalent asset folder
+* src/pages/document-details/DocumentDetailPage.tsx
+* any file involved in createPendingCommentAnchor / submit comment / pending anchor state
 
-Implementation details:
+Main requirement:
+There must be exactly one coordinate pipeline for persisted avatar markers:
 
+PDF page coordinate/pageRect
+→ project to overlayRect for current viewer scroll/layout
+→ render React marker absolute inside viewer overlay
 
-1. Add DocHub-managed annotation custom data constants in AprysePdfViewer.tsx.
+There must be no path where persisted marker source is:
 
-Use custom metadata like:
+* clientPosition
+* getBoundingClientRect
+* overlayPosition
+* pageToWindow output directly
+* mouse event x/y
+* SelectionCommentAction position
+* popover position
 
-* docHubManaged = "true"
-* docHubKind = "comment-highlight" | "avatar-marker" | "pending-comment-highlight"
-* docHubAnnotationId = Mongo annotation/thread id
-* docHubApryseRole = optional
+1. Audit all marker creation paths
 
-The goal is to distinguish:
+Search for:
 
-* imported DocHub comment highlights
-* temporary pending highlights
-* DocHub avatar marker stamp annotations
-* unrelated user annotations
+* commentMarkerOverlays
+* projectedMarkers
+* pageAnchoredMarkers
+* pageRect
+* overlayRect
+* clientPosition
+* getSelectionClientPosition
+* getThreadMarkerClientPosition
+* getAnnotationClientPosition
+* createPendingCommentAnchor
+* handleSubmitComment
+* onCommentCreated
+* pendingCommentAnchor
+* pageToWindow
+* getBoundingClientRect
 
-2. Use Apryse StampAnnotation for avatar marker.
+Find every place where an avatar marker is created or updated.
 
-Create helper:
-createAvatarMarkerAnnotation(params)
+For persisted avatar markers, remove any branch that uses client/viewport coordinates as marker source.
 
-Input:
+2. Enforce marker model with explicit types
 
-* threadId: Mongo annotation id
+Use types like:
+
+type PagePoint = {
+pageNumber: number
+x: number
+y: number
+}
+
+type PageRect = {
+x: number
+y: number
+width: number
+height: number
+}
+
+type PageBoundAvatarMarker = {
+annotationId: string
+thread: CommentThread
+pageNumber: number
+pageRect: PageRect
+}
+
+type ProjectedAvatarMarker = PageBoundAvatarMarker & {
+overlayRect: {
+left: number
+top: number
+width: number
+height: number
+}
+}
+
+Rules:
+
+* PageBoundAvatarMarker is source.
+* ProjectedAvatarMarker is derived render state.
+* Never create PageBoundAvatarMarker from clientPosition or overlayRect.
+* Never save overlayRect back into pageRect.
+
+3. Fix comment creation flow
+
+When user selects text and creates a comment:
+
+createPendingCommentAnchor should produce:
+
 * pageNumber
-* anchor page coordinate: { x, y }
+* position in PDF page coordinates
+* xfdf if visualState is highlight
+* apryseAnnotationId
+* visualState
 
-Behavior:
+The position must be derived from Apryse selection/page geometry, not from the Add Comment button position or mouse/client coordinates.
 
-* Create new Annotations.StampAnnotation.
-* Set PageNumber.
-* Set X/Y/Width/Height in Apryse page coordinate.
-* Use image asset as ImageData.
-* Set custom data as DocHub avatar marker.
-* Make it read-only / non-movable / non-resizable / non-deletable if supported by Apryse.
-* Make it non-listable if supported.
-* The marker is purely visual/clickable FE annotation.
+If current code has something like:
 
-Suggested placement:
+* selectionActionPosition
+* clientPosition
+* normalizedClientPosition
+* overlay position
 
-* For highlight state:
-  marker should be right side of the rendered highlight.
-* For point state:
-  marker should be derived from annotation.position.
+Do not use it for annotation.position.
 
-Suggested constants:
+It can only be used for:
 
-* AVATAR_MARKER_WIDTH
-* AVATAR_MARKER_HEIGHT
-* AVATAR_MARKER_GAP
+* placing temporary Add Comment button
+* opening CommentComposer
+* opening CommentThreadPopover
 
-These are PDF page units, not CSS px. Pick conservative values and make them easy to tune.
+4. Build avatar marker only from thread annotation data or imported highlight geometry
 
-3. Load image asset safely.
+For each thread:
 
-If StampAnnotation needs base64/data URL:
+const visualState =
+annotation.visualState ?? (annotation.xfdf ? "highlight" : "point")
 
-* Convert imported asset URL to data URL once.
-* Cache it in a ref.
-* Avoid re-fetching image for every thread.
+If visualState === "highlight" and imported highlight annotation exists:
 
-Example helper shape:
-getAvatarMarkerImageData(): Promise<string>
+* use imported highlight geometry as primary source:
 
-4. Render flow in renderCommentThreads().
+pageNumber = importedHighlight.PageNumber
+anchorX = importedHighlight.X + importedHighlight.Width
+anchorY = importedHighlight.Y + importedHighlight.Height / 2
 
-Before rendering:
+If imported highlight geometry is unavailable:
 
-* Remove all existing DocHub-managed comment visual annotations from Apryse:
+* fallback only to annotation.position if it is known to be PDF page coordinate.
+* never fallback to clientPosition.
 
-  * imported DocHub comment highlights
-  * old DocHub avatar marker stamps
-  * stale temporary pending anchors when appropriate
-* Do not delete unrelated user annotations.
+If visualState === "point":
 
-Then for each thread:
+* use annotation.position and annotation.pageNumber.
+* skip stale xfdf.
 
-* Skip deleted annotations.
-* Compute normalized visual state:
-  visualState = annotation.visualState ?? (annotation.xfdf ? "highlight" : "point")
+Then create pageRect from page coordinate constants:
 
-Case A: visualState === "highlight" and annotation.xfdf exists:
+pageRect = {
+x: anchorX + AVATAR_MARKER_GAP_PAGE,
+y: anchorY - AVATAR_MARKER_HEIGHT_PAGE / 2,
+width: AVATAR_MARKER_WIDTH_PAGE,
+height: AVATAR_MARKER_HEIGHT_PAGE,
+}
 
-* Import annotation.xfdf using annotationManager.importAnnotations.
-* Mark imported annotation(s) as DocHub comment highlight using custom data.
-* Set docHubAnnotationId to annotation._id.
-* Make imported highlight read-only if appropriate.
-* Derive avatar anchor from the imported highlight geometry:
-  anchor.x = importedHighlight.X + importedHighlight.Width
-  anchor.y = importedHighlight.Y + importedHighlight.Height / 2
-* If imported geometry is unavailable, fallback to annotation.position.
+5. Add coordinate invariant guards
 
-Case B: visualState === "point":
+Add development-only warnings when marker source looks suspicious.
 
-* Do not import annotation.xfdf.
-* Derive avatar anchor from annotation.position:
-  anchor.x = annotation.position.x
-  anchor.y = annotation.position.y
+Example checks:
 
-Case C: visualState === "highlight" but xfdf missing:
+* pageNumber must be >= 1
+* pageRect.x/y should be reasonable for page size
+* pageRect.width/height should be small page units, not huge viewport pixels
+* pageRect should not equal overlay/client coordinates
 
-* Do not import highlight.
-* Still render avatar marker from annotation.position if position exists.
+If possible, get page dimensions from document:
 
-For every thread with a valid anchor:
+* page width / height
+* warn if x/y are outside a reasonable page range
 
-* Create one avatar marker StampAnnotation.
-* Add it to annotationManager.
-* Redraw it.
+Example warning:
 
-5. Disable React overlay avatar markers.
+console.warn('[DocHub marker] Invalid pageRect source; refusing to render viewport-based marker', {
+annotationId,
+pageNumber,
+pageRect,
+pageSize,
+source,
+})
 
-Persisted comment avatar markers should no longer render via CommentAnchorMarker.
+If pageRect is invalid, do not render marker rather than rendering a viewport-fixed marker.
 
-Options:
+6. Project pageRect to overlayRect in exactly one helper
 
-* In AprysePdfViewer, stop populating commentMarkerOverlays for persisted thread markers.
-* Or pass markers={[]} to CommentAnnotationOverlayLayer.
-* Keep SelectionCommentAction for "Add comment" text selection.
-* Do not remove CommentAnchorMarker component from the project yet unless it becomes fully unused and TypeScript confirms safe deletion.
-* Avoid duplicate avatar markers: there must not be both React avatar marker and Apryse stamp marker.
+Use one helper only:
 
-6. Annotation click handling for avatar markers.
+pageRectToOverlayRect({
+pageNumber,
+rect,
+})
 
-In annotationSelected listener:
+It should:
 
-* Detect if selected annotation is DocHub avatar marker.
-* Read docHubAnnotationId.
-* Call onCommentAnnotationClickRef.current(annotationId, clientPosition).
+* take PDF page rect.
+* use Apryse pageToWindow for top-left and bottom-right.
+* convert to client coordinate if needed.
+* subtract overlayRoot.getBoundingClientRect().
+* return overlay-relative rect.
 
-For Phase 1, clientPosition can be computed from the marker annotation geometry using existing conversion helper:
+This helper must be the only place where page coordinates become screen/overlay coordinates.
 
-* page point = { x: marker.X + marker.Width, y: marker.Y + marker.Height / 2 }
-* convert with pageToWindow + normalizeAprysePointToClient
-* pass that client position to the existing parent callback.
+7. Do not persist or reuse overlayRect
 
-Do not redesign anchor popover positioning yet. Phase 2 will refine DocumentDetailPage / anchor mode positioning. This phase only needs marker clicks to keep working reasonably.
+On scroll/page change:
 
-For selected DocHub highlight annotation:
+* recompute overlayRect from original pageRect.
+* do not mutate pageRect.
+* do not use previous overlayRect as source.
 
-* Existing behavior can remain, but preferably if there is a matching avatar marker annotation, use the avatar marker geometry for clientPosition.
-* Do not spend large refactor effort here in Phase 1.
+On commentThreads refetch:
 
-8. Prevent avatar marker from being exported into edited PDF.
+* rebuild PageBoundAvatarMarker from annotation/page geometry.
+* project again.
 
-Because avatar marker is now an Apryse annotation, it must not be saved into the PDF file.
+8. Pending/new comment marker behavior
 
-Before exportEditedPdf or any full PDF export:
+After submitting a new comment:
 
-* Temporarily remove DocHub avatar marker stamp annotations.
-* Export the edited PDF.
-* Re-render comment threads afterwards to restore avatar markers.
+* clear pending composer state.
+* clear temporary selection UI.
+* do not render final avatar marker from pending client coordinates.
+* final marker should appear from:
 
-Be careful:
+  * returned/refetched thread annotation data
+  * or imported highlight geometry tagged with the Mongo annotation id
 
-* Do not remove actual comment highlights that should remain in PDF editing flow unless existing logic already does so intentionally.
-* Avatar marker stamps are UI-only and must never be baked into the exported PDF.
+If there is an optimistic marker:
 
-9. Preserve comment creation flow.
+* it must also use pageRect derived from PDF page coordinate.
+* otherwise disable optimistic persisted marker and wait for refetch.
 
-Do not change:
+9. CommentAnchorMarker must not be fixed
 
-* createPendingCommentAnchor payload.
-* pageNumber / position / xfdf / apryseAnnotationId / content payload shape.
-* CommentComposer behavior.
-* CommentPanel/sidebar behavior.
-* BE degradation behavior.
+Verify persisted marker component:
 
-10. TypeScript safety.
+* no position: fixed
+* no className fixed
+* no viewport left/top source
+* no clientPosition prop
 
-Apryse annotation types may not expose all fields.
-Use careful local `any` casts only around Apryse annotation objects when needed.
-Do not turn the whole file into any.
-Keep existing public ref interface stable unless absolutely necessary.
+It should receive only overlayRect:
 
-11. Cleanup.
+style={{
+position: 'absolute',
+left: overlayRect.left,
+top: overlayRect.top,
+width: overlayRect.width,
+height: overlayRect.height,
+}}
 
-Remove or clearly disable old native point marker function if it exists, especially createCommentPointMarker().
-Add a comment:
+10. CommentThreadPopover can still use clientPosition
 
-* Point markers are rendered as DocHub avatar StampAnnotation.
-* Do not render React fixed avatar overlay for persisted markers.
-* Do not render native ellipse/rectangle point markers.
+Popover is allowed to be viewport fixed.
 
-Do not remove SelectionCommentAction because it is still used for selecting text and starting a new comment.
+When user clicks marker:
 
-Manual test checklist:
+* use marker DOMRect to compute clientPosition:
+  rect.right
+  rect.top + rect.height / 2
 
-1. Load document with existing highlight comments:
+This clientPosition is only for popover placement.
+Do not feed it back into avatar marker state.
 
-   * native highlight renders.
-   * avatar marker image renders to the right side of highlight.
-   * no duplicate React avatar marker appears.
-2. Click avatar marker:
+11. Add debugging log to prove the fix
 
-   * existing comment thread opens through current callback.
-   * no marker shifting caused by React overlay.
-3. Click native highlight:
+Temporarily add a debug log when marker is built:
 
-   * existing thread still opens or selects correctly.
-4. Open comments sidebar:
+console.debug('[DocHub marker source]', {
+annotationId,
+source: 'imported-highlight' | 'annotation-position',
+pageNumber,
+pageRect,
+overlayRect,
+})
 
-   * sidebar list still works.
-5. Close comments sidebar:
+Expected:
 
-   * avatar markers remain visible as Apryse annotations.
-6. Edit/save overlapping text so BE returns visualState="point":
+* Every marker should have source imported-highlight or annotation-position.
+* No marker should have source clientPosition, overlayPosition, DOMRect, or selectionButton.
 
-   * old highlight does not render.
-   * avatar marker still renders from annotation.position.
-7. Zoom / scroll / change page:
+12. Manual test checklist
 
-   * avatar marker stays attached to PDF page position.
-8. Export/save edited PDF:
+Create a new document and test:
 
-   * avatar marker image is not baked into the exported PDF.
+1. Create comment on selected text.
+2. Confirm exactly one marker appears.
+3. Scroll down:
 
-After implementation, report:
+   * marker should move with PDF page.
+   * marker should disappear when its page area scrolls out of view.
+   * marker must not stay fixed on viewport.
+4. Create another comment on another text selection.
+5. Scroll:
 
-1. Files changed.
-2. Which asset image was used for avatar marker.
-3. How avatar StampAnnotation is created and tagged.
-4. How renderCommentThreads now handles highlight vs point.
-5. How React overlay avatar rendering was disabled.
-6. How avatar markers are prevented from being exported into the PDF.
-7. Any Apryse API/type assumptions made.
+   * this marker must also behave page-bound.
+6. Repeat 5-10 times:
+
+   * every marker must behave the same way.
+   * no random marker should be viewport-fixed.
+7. Reload page:
+
+   * all persisted markers behave page-bound.
+8. Open sidebar:
+
+   * markers hidden.
+9. Close sidebar:
+
+   * markers reappear and remain page-bound.
+10. Click marker:
+
+* popover opens to right of marker.
+* marker does not shift.
+
+11. visualState point:
+
+* marker uses annotation.position.
+* still page-bound.
+
+12. Export/save:
+
+* React marker not included in PDF.
+
+Report after implementation:
+
+1. Which coordinate path was causing viewport-fixed marker.
+2. Where clientPosition was incorrectly used as marker source, if found.
+3. How marker source is now forced to pageRect/page coordinate.
+4. Where pageRectToOverlayRect is used.
+5. Confirmation that persisted avatar marker no longer accepts clientPosition/overlayPosition as source.

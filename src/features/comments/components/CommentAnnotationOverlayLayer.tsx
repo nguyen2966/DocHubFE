@@ -3,8 +3,12 @@ import { CommentAnchorMarker } from './CommentAnchorMarker'
 import { SelectionCommentAction } from './SelectionCommentAction'
 
 export interface CommentMarkerOverlay {
+  annotationId: string
   thread: CommentThread
-  position: { x: number; y: number }
+  pageNumber: number
+  source: 'imported-highlight' | 'annotation-position'
+  pageRect: { x: number; y: number; width: number; height: number }
+  overlayRect: { left: number; top: number; width: number; height: number }
 }
 
 interface CommentAnnotationOverlayLayerProps {
@@ -15,7 +19,15 @@ interface CommentAnnotationOverlayLayerProps {
   onAddComment: () => void | Promise<void>
   onMarkerClick: (
     thread: CommentThread,
-    position: { x: number; y: number },
+    markerElement: HTMLElement,
+  ) => void
+  onMarkerHover?: (
+    thread: CommentThread,
+    markerElement: HTMLElement,
+  ) => void
+  onMarkerElementChange?: (
+    thread: CommentThread,
+    markerElement: HTMLElement | null,
   ) => void
 }
 
@@ -26,6 +38,8 @@ export function CommentAnnotationOverlayLayer({
   hidden,
   onAddComment,
   onMarkerClick,
+  onMarkerHover,
+  onMarkerElementChange,
 }: CommentAnnotationOverlayLayerProps) {
   if (hidden) return null
 
@@ -42,9 +56,11 @@ export function CommentAnnotationOverlayLayer({
         <CommentAnchorMarker
           key={marker.thread.annotation._id}
           thread={marker.thread}
-          position={marker.position}
+          overlayRect={marker.overlayRect}
           active={activeAnnotationId === marker.thread.annotation._id}
           onClick={onMarkerClick}
+          onHover={onMarkerHover}
+          onElementChange={onMarkerElementChange}
         />
       ))}
     </>

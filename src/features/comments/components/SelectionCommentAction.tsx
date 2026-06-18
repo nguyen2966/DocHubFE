@@ -5,30 +5,16 @@ interface SelectionCommentActionProps {
   onClick: () => void | Promise<void>
 }
 
-function clampActionPosition(position: { x: number; y: number }) {
-  if (typeof window === 'undefined') return position
-
-  const size = 36
-  const gap = 12
-
-  return {
-    x: Math.min(Math.max(gap, position.x), window.innerWidth - size - gap),
-    y: Math.min(Math.max(gap, position.y), window.innerHeight - size - gap),
-  }
-}
-
 export function SelectionCommentAction({
   position,
   onClick,
 }: SelectionCommentActionProps) {
-  const safePosition = clampActionPosition(position)
-
   return (
     <div
-      className="fixed z-50"
+      className="pointer-events-auto absolute z-50"
       style={{
-        left: safePosition.x,
-        top: safePosition.y,
+        left: position.x,
+        top: position.y,
       }}
     >
       <button

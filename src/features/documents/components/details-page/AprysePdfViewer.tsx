@@ -8,7 +8,6 @@ import {
 import WebViewerModule from '@pdftron/webviewer'
 import type { WebViewerInstance } from '@pdftron/webviewer'
 
-import AvatarMarkerImage from '../../../../assets/avatar.png'
 import type {
   EditedRect,
   PendingCommentAnchor,
@@ -85,7 +84,6 @@ type TextSelection = {
   text: string
   pageNumber: number
   position: { x: number; y: number }
-  clientPosition: { x: number; y: number }
 }
 
 type RectLike = {
@@ -109,6 +107,33 @@ type ApryseWebComponentElement = HTMLElement & {
   shadowRoot: ShadowRoot | null
 }
 
+type PagePoint = {
+  pageNumber: number
+  x: number
+  y: number
+}
+
+type AvatarMarkerSource = 'imported-highlight' | 'annotation-position'
+
+type PageBoundAvatarMarker = {
+  annotationId: string
+  thread: CommentThread
+  pageNumber: number
+  anchor: { x: number; y: number }
+  source: AvatarMarkerSource
+}
+
+type OverlayRect = {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+type ProjectedAvatarMarker = PageBoundAvatarMarker & {
+  overlayRect: OverlayRect
+}
+
 const COMMENT_ANCHOR_TYPE = 'comment_anchor'
 const COMMENT_THREAD_ID_KEY = 'commentThreadId'
 const COMMENT_ANCHOR_TYPE_KEY = 'commentAnchorType'
@@ -120,9 +145,24 @@ const DOC_HUB_ROLE_KEY = 'docHubApryseRole'
 const DOC_HUB_KIND_COMMENT_HIGHLIGHT = 'comment-highlight'
 const DOC_HUB_KIND_AVATAR_MARKER = 'avatar-marker'
 const DOC_HUB_KIND_PENDING_COMMENT_HIGHLIGHT = 'pending-comment-highlight'
-const AVATAR_MARKER_WIDTH = 24
-const AVATAR_MARKER_HEIGHT = 24
-const AVATAR_MARKER_GAP = 8
+const COMMENT_MARKER_SIZE = 36
+const COMMENT_MARKER_OVERLAY_GAP = 8
+const SELECTION_ACTION_OVERLAY_GAP = 12
+const LOCKED_PDF_ZOOM = 1.25
+const ZOOM_LOCK_ENABLED = true
+const APRYSE_ZOOM_UI_ELEMENTS = [
+  'zoomOverlayButton',
+  'zoomOverlay',
+  'zoomInButton',
+  'zoomOutButton',
+  'zoomText',
+  'zoomInput',
+  'fitModeButton',
+  'fitModeOverlayButton',
+  'fitModeDropdown',
+  'viewControlsButton',
+  'viewControlsOverlay',
+]
 
 const wait = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -233,32 +273,6 @@ function findApryseScrollContainer(viewerElement: HTMLDivElement) {
   }
 
   return null
-}
-
-function normalizeAprysePointToClient(
-  viewerElement: HTMLDivElement | null,
-  point: { x: number; y: number },
-) {
-  if (!viewerElement) return point
-
-  const viewerRect = viewerElement.getBoundingClientRect()
-
-  const alreadyClientPosition =
-    point.x >= viewerRect.left - 8 &&
-    point.x <= viewerRect.right + 8 &&
-    point.y >= viewerRect.top - 8 &&
-    point.y <= viewerRect.bottom + 8
-
-  if (alreadyClientPosition) {
-    return point
-  }
-
-  const scrollContainer = findApryseScrollContainer(viewerElement)
-
-  return {
-    x: viewerRect.left + point.x - (scrollContainer?.scrollLeft ?? 0),
-    y: viewerRect.top + point.y - (scrollContainer?.scrollTop ?? 0),
-  }
 }
 
 async function clickInsideApryseShadowRoot(viewerElement: HTMLDivElement) {
@@ -431,6 +445,53 @@ function getQuadBounds(quads: AnyQuad[]) {
     maxX: Math.max(...xs),
     maxY: Math.max(...ys),
   }
+}
+
+function getQuadCenterY(quad: AnyQuad) {
+  return (quad.y1 + quad.y2 + quad.y3 + quad.y4) / 4
+}
+
+function getQuadRightMiddle(quad: AnyQuad) {
+  const rightX = Math.max(quad.x1, quad.x2, quad.x3, quad.x4)
+
+  return {
+    x: rightX,
+    y: getQuadCenterY(quad),
+  }
+}
+
+function getTextAnchorFromQuads(quads: AnyQuad[]) {
+  if (!quads.length) return null
+
+  const lineThreshold = 4
+  const lines: Array<{ centerY: number; quads: AnyQuad[] }> = []
+
+  for (const quad of quads) {
+    const centerY = getQuadCenterY(quad)
+    const line = lines.find(
+      (item) => Math.abs(item.centerY - centerY) <= lineThreshold,
+    )
+
+    if (line) {
+      line.quads.push(quad)
+      line.centerY =
+        line.quads.reduce((sum, item) => sum + getQuadCenterY(item), 0) /
+        line.quads.length
+    } else {
+      lines.push({ centerY, quads: [quad] })
+    }
+  }
+
+  const lastVisualLine = lines.reduce((lastLine, line) =>
+    line.centerY > lastLine.centerY ? line : lastLine,
+  )
+  const rightmostQuad = lastVisualLine.quads.reduce((rightmost, quad) =>
+    getQuadRightMiddle(quad).x > getQuadRightMiddle(rightmost).x
+      ? quad
+      : rightmost,
+  )
+
+  return getQuadRightMiddle(rightmostQuad)
 }
 
 function getFiniteNumber(...values: unknown[]) {
@@ -627,14 +688,14 @@ function readRectLikeForDebug(value: any) {
     pageIndex: getFiniteNumber(value.pageIndex, value.getPageIndex?.()),
     rect: rect
       ? {
-          keys: getDebugKeys(rect),
-          x1: getFiniteNumber(rect.x1, rect.getX1?.()),
-          y1: getFiniteNumber(rect.y1, rect.getY1?.()),
-          x2: getFiniteNumber(rect.x2, rect.getX2?.()),
-          y2: getFiniteNumber(rect.y2, rect.getY2?.()),
-          width: getFiniteNumber(rect.width, rect.getWidth?.()),
-          height: getFiniteNumber(rect.height, rect.getHeight?.()),
-        }
+        keys: getDebugKeys(rect),
+        x1: getFiniteNumber(rect.x1, rect.getX1?.()),
+        y1: getFiniteNumber(rect.y1, rect.getY1?.()),
+        x2: getFiniteNumber(rect.x2, rect.getX2?.()),
+        y2: getFiniteNumber(rect.y2, rect.getY2?.()),
+        width: getFiniteNumber(rect.width, rect.getWidth?.()),
+        height: getFiniteNumber(rect.height, rect.getHeight?.()),
+      }
       : null,
     x: getFiniteNumber(value.X, value.x),
     y: getFiniteNumber(value.Y, value.y),
@@ -708,7 +769,7 @@ function writeApryseDebugLog(label: string, data: unknown) {
 function isCommentAnchor(annotation: AnyAnnotation) {
   return (
     annotation?.getCustomData?.(COMMENT_ANCHOR_TYPE_KEY) ===
-      COMMENT_ANCHOR_TYPE ||
+    COMMENT_ANCHOR_TYPE ||
     annotation?.getCustomData?.(DOC_HUB_MANAGED_KEY) === 'true'
   )
 }
@@ -717,7 +778,7 @@ function isTemporaryCommentAnchor(annotation: AnyAnnotation) {
   return (
     annotation?.getCustomData?.(TEMPORARY_ANCHOR_KEY) === 'true' ||
     annotation?.getCustomData?.(DOC_HUB_KIND_KEY) ===
-      DOC_HUB_KIND_PENDING_COMMENT_HIGHLIGHT
+    DOC_HUB_KIND_PENDING_COMMENT_HIGHLIGHT
   )
 }
 
@@ -806,6 +867,7 @@ export const AprysePdfViewer = forwardRef<
   ref,
 ) {
   const viewerRef = useRef<HTMLDivElement | null>(null)
+  const overlayRef = useRef<HTMLDivElement | null>(null)
   const instanceRef = useRef<WebViewerInstance | null>(null)
   const activeContentEditorRef = useRef<AnyContentBoxEditor | null>(null)
   const editedRectsRef = useRef<EditedRect[]>([])
@@ -830,7 +892,12 @@ export const AprysePdfViewer = forwardRef<
   const lastDegradedAnnotationIdsRef = useRef<string[]>([])
   const documentLoadedRef = useRef(false)
   const pendingRenderThreadsRef = useRef<CommentThread[] | null>(null)
-  const avatarMarkerImageDataRef = useRef<string | null>(null)
+  const markerElementsRef = useRef<Map<string, HTMLElement>>(new Map())
+  const lastHoveredThreadIdRef = useRef<string | null>(null)
+  const markerHoverTimeoutRef = useRef<number | null>(null)
+  const isEnforcingZoomRef = useRef(false)
+  const zoomEnforcementTimeoutsRef = useRef<number[]>([])
+  const zoomInputCleanupRef = useRef<(() => void) | null>(null)
   const overlayFrameRef = useRef<number | null>(null)
   const overlayPositionCleanupRef = useRef<(() => void) | null>(null)
 
@@ -848,90 +915,467 @@ export const AprysePdfViewer = forwardRef<
     return Boolean(commentsDisabledRef.current || isPdfEditingRef.current)
   }
 
-  async function getAvatarMarkerImageData() {
-    if (avatarMarkerImageDataRef.current) {
-      return avatarMarkerImageDataRef.current
-    }
+  function getCurrentZoomLevel() {
+    const instance = instanceRef.current
+
+    return instance?.Core.documentViewer.getZoomLevel?.() ?? null
+  }
+
+  function configureLockedZoomUi(instance: WebViewerInstance) {
+    if (!ZOOM_LOCK_ENABLED) return
+
+    const { UI } = instance
 
     try {
-      const response = await fetch(AvatarMarkerImage)
-      const blob = await response.blob()
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-
-        reader.onload = () => resolve(String(reader.result))
-        reader.onerror = () => reject(reader.error)
-        reader.readAsDataURL(blob)
-      })
-
-      avatarMarkerImageDataRef.current = dataUrl
+      UI.disableElements?.(APRYSE_ZOOM_UI_ELEMENTS)
+      UI.hideElements?.(APRYSE_ZOOM_UI_ELEMENTS)
     } catch (error) {
-      console.warn('Failed to load avatar marker image data:', error)
-      avatarMarkerImageDataRef.current = AvatarMarkerImage
+      console.warn('Failed to hide Apryse zoom UI:', error)
+    }
+  }
+
+  function clearScheduledZoomEnforcement() {
+    for (const timeoutId of zoomEnforcementTimeoutsRef.current) {
+      window.clearTimeout(timeoutId)
     }
 
-    return avatarMarkerImageDataRef.current
+    zoomEnforcementTimeoutsRef.current = []
+  }
+
+  function enforceLockedZoom(reason: string) {
+    if (!ZOOM_LOCK_ENABLED || isEnforcingZoomRef.current) return
+
+    const instance = instanceRef.current
+    const documentViewer = instance?.Core.documentViewer
+
+    if (!instance || !documentViewer) return
+
+    const currentZoom = documentViewer.getZoomLevel?.()
+
+    if (
+      typeof currentZoom === 'number' &&
+      Math.abs(currentZoom - LOCKED_PDF_ZOOM) < 0.001
+    ) {
+      return
+    }
+
+    isEnforcingZoomRef.current = true
+
+    try {
+      if (typeof instance.UI.setZoomLevel === 'function') {
+        instance.UI.setZoomLevel(LOCKED_PDF_ZOOM)
+      }
+
+      if (typeof documentViewer.zoomTo === 'function') {
+        documentViewer.zoomTo(LOCKED_PDF_ZOOM)
+      } else if (typeof instance.UI.setZoomLevel !== 'function') {
+        console.warn('Apryse zoom API is not available for zoom lock')
+      }
+
+      writeApryseDebugLog('lockedZoom-enforced', {
+        reason,
+        previousZoom: currentZoom ?? null,
+        nextZoom: documentViewer.getZoomLevel?.() ?? null,
+        lockedZoom: LOCKED_PDF_ZOOM,
+      })
+    } finally {
+      requestAnimationFrame(() => {
+        isEnforcingZoomRef.current = false
+        scheduleCommentOverlayRefresh()
+
+        const nextZoom = documentViewer.getZoomLevel?.()
+
+        if (
+          typeof nextZoom === 'number' &&
+          Math.abs(nextZoom - LOCKED_PDF_ZOOM) >= 0.001
+        ) {
+          enforceLockedZoom(`${reason}-verify`)
+        }
+      })
+    }
+  }
+
+  function scheduleLockedZoomEnforcement(reason: string) {
+    if (!ZOOM_LOCK_ENABLED) return
+
+    clearScheduledZoomEnforcement()
+    enforceLockedZoom(`${reason}-immediate`)
+
+    for (const delay of [0, 50, 150, 350, 750]) {
+      const timeoutId = window.setTimeout(() => {
+        zoomEnforcementTimeoutsRef.current =
+          zoomEnforcementTimeoutsRef.current.filter((id) => id !== timeoutId)
+        enforceLockedZoom(`${reason}-delayed-${delay}`)
+      }, delay)
+
+      zoomEnforcementTimeoutsRef.current.push(timeoutId)
+    }
+  }
+
+  function isZoomShortcut(event: KeyboardEvent) {
+    if (!event.ctrlKey && !event.metaKey) return false
+
+    const key = event.key.toLowerCase()
+
+    return key === '+' || key === '-' || key === '=' || key === '0'
+  }
+
+  function isEventInsideViewer(event: Event, viewerElement: HTMLElement) {
+    const composedPath = event.composedPath?.() ?? []
+
+    if (composedPath.includes(viewerElement)) return true
+
+    const target = event.target
+
+    if (target instanceof Node && viewerElement.contains(target)) {
+      return true
+    }
+
+    const activeElement = document.activeElement
+
+    return Boolean(activeElement && viewerElement.contains(activeElement))
+  }
+
+  function bindZoomInputBlockers(viewerElement: HTMLElement) {
+    zoomInputCleanupRef.current?.()
+    zoomInputCleanupRef.current = null
+
+    if (!ZOOM_LOCK_ENABLED) return
+
+    const preventZoomEvent = (event: Event) => {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+
+    const handleWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return
+
+      preventZoomEvent(event)
+      enforceLockedZoom('blocked-ctrl-wheel')
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isZoomShortcut(event)) return
+      if (!isEventInsideViewer(event, viewerElement)) return
+
+      preventZoomEvent(event)
+      enforceLockedZoom('blocked-keyboard-shortcut')
+    }
+
+    const handleGesture = (event: Event) => {
+      if (!isEventInsideViewer(event, viewerElement)) return
+
+      preventZoomEvent(event)
+      enforceLockedZoom('blocked-gesture-zoom')
+    }
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (event.touches.length < 2) return
+
+      preventZoomEvent(event)
+      enforceLockedZoom('blocked-touch-pinch')
+    }
+
+    viewerElement.addEventListener('wheel', handleWheel, {
+      capture: true,
+      passive: false,
+    })
+    viewerElement.addEventListener('touchmove', handleTouchMove, {
+      capture: true,
+      passive: false,
+    })
+    window.addEventListener('keydown', handleKeyDown, { capture: true })
+    window.addEventListener('gesturestart', handleGesture, {
+      capture: true,
+      passive: false,
+    } as AddEventListenerOptions)
+    window.addEventListener('gesturechange', handleGesture, {
+      capture: true,
+      passive: false,
+    } as AddEventListenerOptions)
+    window.addEventListener('gestureend', handleGesture, {
+      capture: true,
+      passive: false,
+    } as AddEventListenerOptions)
+
+    zoomInputCleanupRef.current = () => {
+      viewerElement.removeEventListener('wheel', handleWheel, {
+        capture: true,
+      })
+      viewerElement.removeEventListener('touchmove', handleTouchMove, {
+        capture: true,
+      })
+      window.removeEventListener('keydown', handleKeyDown, { capture: true })
+      window.removeEventListener('gesturestart', handleGesture, {
+        capture: true,
+      } as EventListenerOptions)
+      window.removeEventListener('gesturechange', handleGesture, {
+        capture: true,
+      } as EventListenerOptions)
+      window.removeEventListener('gestureend', handleGesture, {
+        capture: true,
+      } as EventListenerOptions)
+    }
   }
 
   function getAnnotationClientPosition(annotation: AnyAnnotation) {
+    const pagePoint = getAnnotationRightMiddlePagePoint(annotation)
+    const clientPoint = pagePoint
+      ? pagePointToClientPoint(pagePoint.pageNumber, pagePoint)
+      : null
+
+    if (clientPoint) return clientPoint
+
+    const rect = viewerRef.current?.getBoundingClientRect()
+
+    return {
+      x: (rect?.left ?? 0) + 24,
+      y: (rect?.top ?? 0) + 140,
+    }
+  }
+
+  function getMarkerClientPosition(markerElement: HTMLElement) {
+    const rect = markerElement.getBoundingClientRect()
+
+    return {
+      x: rect.right,
+      y: rect.top + rect.height / 2,
+    }
+  }
+
+  function overlayPointToClientPoint(point: { x: number; y: number }) {
+    const overlayElement = overlayRef.current
+
+    if (!overlayElement) return null
+
+    const overlayRect = overlayElement.getBoundingClientRect()
+
+    return {
+      x: overlayRect.left + point.x,
+      y: overlayRect.top + point.y,
+    }
+  }
+
+  function getPageSize(pageNumber: number) {
+    const instance = instanceRef.current
+    const documentViewer = instance?.Core.documentViewer
+
+    if (!documentViewer) return null
+
+    try {
+      const width = documentViewer.getPageWidth?.(pageNumber)
+      const height = documentViewer.getPageHeight?.(pageNumber)
+
+      if (
+        typeof width === 'number' &&
+        Number.isFinite(width) &&
+        typeof height === 'number' &&
+        Number.isFinite(height)
+      ) {
+        return { width, height }
+      }
+    } catch {
+      return null
+    }
+
+    return null
+  }
+
+  function warnInvalidAvatarMarkerSource(
+    marker: PageBoundAvatarMarker,
+    reason: string,
+    pageSize: { width: number; height: number } | null,
+  ) {
+    console.warn(
+      '[DocHub marker] Invalid page anchor source; refusing to render marker',
+      {
+        annotationId: marker.annotationId,
+        pageNumber: marker.pageNumber,
+        anchor: marker.anchor,
+        pageSize,
+        source: marker.source,
+        reason,
+      },
+    )
+  }
+
+  function isValidPageBoundAvatarMarker(marker: PageBoundAvatarMarker) {
+    const instance = instanceRef.current
+    const pageCount = instance?.Core.documentViewer.getPageCount?.() ?? null
+    const { pageNumber, anchor } = marker
+    const values = [pageNumber, anchor.x, anchor.y]
+    const pageSize = getPageSize(pageNumber)
+
+    if (!values.every((value) => Number.isFinite(value))) {
+      warnInvalidAvatarMarkerSource(marker, 'non-finite-page-anchor', pageSize)
+      return false
+    }
+
+    if (pageNumber < 1 || (typeof pageCount === 'number' && pageNumber > pageCount)) {
+      warnInvalidAvatarMarkerSource(marker, 'invalid-page-number', pageSize)
+      return false
+    }
+
+    if (!pageSize) return true
+
+    const margin = 100
+    const outOfPageRange =
+      anchor.x < -margin ||
+      anchor.y < -margin ||
+      anchor.x > pageSize.width + margin ||
+      anchor.y > pageSize.height + margin
+
+    if (outOfPageRange) {
+      warnInvalidAvatarMarkerSource(marker, 'anchor-outside-page-range', pageSize)
+      return false
+    }
+
+    return true
+  }
+
+  function pagePointToOverlayPoint(
+    pageNumber: number,
+    pagePoint: { x: number; y: number },
+  ) {
     const instance = instanceRef.current
     const viewerElement = viewerRef.current
 
-    if (!instance) {
-      return { x: 24, y: 160 }
-    }
+    if (!instance || !viewerElement) return null
 
     try {
       const displayMode = instance.Core.documentViewer
         .getDisplayModeManager()
         .getDisplayMode()
-
-      const point = displayMode.pageToWindow(
-        {
-          x: annotation.X + annotation.Width,
-          y: annotation.Y + annotation.Height / 2,
-        },
-        annotation.PageNumber,
-      )
-
-      return normalizeAprysePointToClient(viewerElement, point)
-    } catch {
-      const rect = viewerElement?.getBoundingClientRect()
+      const scrollContainer = findApryseScrollContainer(viewerElement)
+      const point = displayMode.pageToWindow(pagePoint, pageNumber)
 
       return {
-        x: (rect?.left ?? 0) + 24,
-        y: (rect?.top ?? 0) + 140,
+        x: point.x - (scrollContainer?.scrollLeft ?? 0),
+        y: point.y - (scrollContainer?.scrollTop ?? 0),
       }
+    } catch {
+      return null
     }
   }
 
-  function getThreadMarkerClientPosition(thread: CommentThread) {
+  function pagePointToClientPoint(
+    pageNumber: number,
+    pagePoint: { x: number; y: number },
+  ) {
+    const overlayPoint = pagePointToOverlayPoint(pageNumber, pagePoint)
+    const overlayElement = overlayRef.current
+
+    if (!overlayPoint || !overlayElement) return null
+
+    const overlayBounds = overlayElement.getBoundingClientRect()
+
+    return {
+      x: overlayBounds.left + overlayPoint.x,
+      y: overlayBounds.top + overlayPoint.y,
+    }
+  }
+
+  function getThreadVisualState(thread: CommentThread) {
     const { annotation } = thread
-    const pageNumber = annotation.pageNumber
-    const position = annotation.position
+
+    return annotation.visualState ?? (annotation.xfdf ? 'highlight' : 'point')
+  }
+
+  function getThreadPageBoundAvatarMarker(
+    thread: CommentThread,
+  ): PageBoundAvatarMarker | null {
+    const { annotation } = thread;
+    const visualState = getThreadVisualState(thread);
+    const importedHighlight = findCommentAnnotation(annotation._id);
+    const highlightAnchor = importedHighlight
+      ? getAnnotationRightMiddlePagePoint(importedHighlight)
+      : null;
+    if (visualState === 'highlight') {
+      if (highlightAnchor) {
+        return {
+          annotationId: annotation._id,
+          thread,
+          pageNumber: highlightAnchor.pageNumber,
+          anchor: { x: highlightAnchor.x, y: highlightAnchor.y },
+          source: 'imported-highlight',
+        }
+      }
+    }
 
     if (
-      typeof pageNumber !== 'number' ||
-      !position ||
-      typeof position.x !== 'number' ||
-      typeof position.y !== 'number'
+      typeof annotation.pageNumber !== 'number' ||
+      !annotation.position ||
+      typeof annotation.position.x !== 'number' ||
+      typeof annotation.position.y !== 'number'
     ) {
       return null
     }
 
-    const clientPosition = getSelectionClientPosition(pageNumber, position)
-
-    if (annotation.visualState === 'highlight') {
-      return {
-        x: clientPosition.x + 12,
-        y: clientPosition.y + 14,
-      }
+    return {
+      annotationId: annotation._id,
+      thread,
+      pageNumber: annotation.pageNumber,
+      anchor: { x: highlightAnchor?.x, y: highlightAnchor?.y },
+      source: 'imported-highlight',
     }
+  }
+
+  function getThreadMarkerOverlay(thread: CommentThread): ProjectedAvatarMarker | null {
+    const pageBoundMarker = getThreadPageBoundAvatarMarker(thread)
+
+    if (!pageBoundMarker) return null
+    if (!isValidPageBoundAvatarMarker(pageBoundMarker)) return null
+
+    const overlayPoint = pagePointToOverlayPoint(
+      pageBoundMarker.pageNumber,
+      pageBoundMarker.anchor,
+    )
+
+    if (!overlayPoint) return null
+
+    const overlayRect = {
+      left: overlayPoint.x + COMMENT_MARKER_OVERLAY_GAP,
+      top: overlayPoint.y - COMMENT_MARKER_SIZE / 2,
+      width: COMMENT_MARKER_SIZE,
+      height: COMMENT_MARKER_SIZE,
+    }
+
+    console.debug('[DocHub marker source]', {
+      annotationId: pageBoundMarker.annotationId,
+      source: pageBoundMarker.source,
+      pageNumber: pageBoundMarker.pageNumber,
+      anchor: pageBoundMarker.anchor,
+      overlayPoint,
+      overlayRect,
+    })
+
+    return {
+      ...pageBoundMarker,
+      overlayRect,
+    }
+  }
+
+  function getThreadMarkerClientPosition(thread: CommentThread) {
+    const markerElement = markerElementsRef.current.get(thread.annotation._id)
+
+    if (markerElement) {
+      return getMarkerClientPosition(markerElement)
+    }
+
+    const markerOverlay = getThreadMarkerOverlay(thread)
+    const clientPosition = markerOverlay
+      ? overlayPointToClientPoint({
+        x: markerOverlay.overlayRect.left + markerOverlay.overlayRect.width,
+        y: markerOverlay.overlayRect.top + markerOverlay.overlayRect.height / 2,
+      })
+      : null
+
+    if (!clientPosition) return null
 
     return clientPosition
   }
 
-  function getAvatarMarkerAnchorFromAnnotation(annotation: AnyAnnotation) {
+  function getAnnotationRightMiddlePagePoint(annotation: AnyAnnotation): PagePoint | null {
     if (
       typeof annotation?.PageNumber !== 'number' ||
       typeof annotation?.X !== 'number' ||
@@ -944,56 +1388,9 @@ export const AprysePdfViewer = forwardRef<
 
     return {
       pageNumber: annotation.PageNumber,
-      position: {
-        x: annotation.X + annotation.Width,
-        y: annotation.Y + annotation.Height / 2,
-      },
+      x: annotation.X + annotation.Width,
+      y: annotation.Y + annotation.Height / 2,
     }
-  }
-
-  async function createAvatarMarkerAnnotation({
-    threadId,
-    pageNumber,
-    anchor,
-  }: {
-    threadId: string
-    pageNumber: number
-    anchor: { x: number; y: number }
-  }) {
-    const instance = instanceRef.current
-
-    if (!instance) return null
-
-    const { Annotations } = instance.Core
-    const StampAnnotation = (Annotations as any).StampAnnotation
-
-    if (!StampAnnotation) {
-      console.warn('Apryse StampAnnotation is not available')
-      return null
-    }
-
-    const marker = new StampAnnotation() as AnyAnnotation
-    const imageData = await getAvatarMarkerImageData()
-
-    marker.PageNumber = pageNumber
-    marker.X = anchor.x + AVATAR_MARKER_GAP
-    marker.Y = anchor.y - AVATAR_MARKER_HEIGHT / 2
-    marker.Width = AVATAR_MARKER_WIDTH
-    marker.Height = AVATAR_MARKER_HEIGHT
-    marker.Subject = 'Comment avatar marker'
-    marker.Contents = 'Comment marker'
-    marker.NoMove = true
-    marker.NoResize = true
-    marker.NoDelete = true
-    marker.ReadOnly = true
-    marker.Listable = false
-
-    marker.ImageData = imageData
-    await marker.setImageData?.(imageData)
-
-    setDocHubManagedData(marker, DOC_HUB_KIND_AVATAR_MARKER, threadId)
-
-    return marker
   }
 
   function refreshCommentOverlayPositions() {
@@ -1007,22 +1404,37 @@ export const AprysePdfViewer = forwardRef<
 
     setSelectionActionPosition(
       selection
-        ? {
-            x: getSelectionClientPosition(
-              selection.pageNumber,
-              selection.position,
-            ).x + 12,
-            y: getSelectionClientPosition(
-              selection.pageNumber,
-              selection.position,
-            ).y - 2,
-          }
+        ? (() => {
+          const overlayPoint = pagePointToOverlayPoint(
+            selection.pageNumber,
+            selection.position,
+          )
+
+          return overlayPoint
+            ? {
+              x: overlayPoint.x + SELECTION_ACTION_OVERLAY_GAP,
+              y: overlayPoint.y - SELECTION_ACTION_OVERLAY_GAP,
+            }
+            : null
+        })()
         : null,
     )
 
-    // Persisted avatar markers are Apryse StampAnnotations. React overlay
-    // markers are intentionally disabled to avoid duplicate/drifting markers.
-    setCommentMarkerOverlays([])
+    if (!showCommentAvatarMarkersRef.current) {
+      setCommentMarkerOverlays([])
+      return
+    }
+
+    setCommentMarkerOverlays(
+      commentThreadsRef.current
+        .filter((thread) => thread.annotation.status !== 'deleted')
+        .map((thread) => {
+          const marker = getThreadMarkerOverlay(thread)
+
+          return marker
+        })
+        .filter((marker): marker is CommentMarkerOverlay => Boolean(marker)),
+    )
   }
 
   function scheduleCommentOverlayRefresh() {
@@ -1043,14 +1455,20 @@ export const AprysePdfViewer = forwardRef<
       ? findApryseScrollContainer(viewerElement)
       : null
     const handlePositionChange = () => scheduleCommentOverlayRefresh()
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined' && viewerElement
+        ? new ResizeObserver(handlePositionChange)
+        : null
 
     scrollContainer?.addEventListener('scroll', handlePositionChange, {
       passive: true,
     })
+    resizeObserver?.observe(viewerElement)
     window.addEventListener('resize', handlePositionChange)
 
     overlayPositionCleanupRef.current = () => {
       scrollContainer?.removeEventListener('scroll', handlePositionChange)
+      resizeObserver?.disconnect()
       window.removeEventListener('resize', handlePositionChange)
     }
   }
@@ -1063,12 +1481,12 @@ export const AprysePdfViewer = forwardRef<
     return commentThreadsRef.current.map((thread) =>
       degradedIds.has(thread.annotation._id)
         ? {
-            ...thread,
-            annotation: {
-              ...thread.annotation,
-              visualState: 'point' as const,
-            },
-          }
+          ...thread,
+          annotation: {
+            ...thread.annotation,
+            visualState: 'point' as const,
+          },
+        }
         : thread,
     )
   }
@@ -1091,23 +1509,6 @@ export const AprysePdfViewer = forwardRef<
 
         return annotation.Id === annotationId
       }) ?? null
-    )
-  }
-
-  function findAvatarMarkerAnnotation(annotationId: string) {
-    const instance = instanceRef.current
-
-    if (!instance) return null
-
-    const annotations =
-      instance.Core.annotationManager.getAnnotationsList?.() ?? []
-
-    return (
-      annotations.find(
-        (annotation: AnyAnnotation) =>
-          isDocHubAvatarMarker(annotation) &&
-          getThreadIdFromAnnotation(annotation) === annotationId,
-      ) ?? null
     )
   }
 
@@ -1223,27 +1624,15 @@ export const AprysePdfViewer = forwardRef<
     pageNumber: number,
     position: { x: number; y: number },
   ) {
-    const instance = instanceRef.current
-    const viewerElement = viewerRef.current
+    const clientPoint = pagePointToClientPoint(pageNumber, position)
 
-    if (!instance) {
-      return { x: 24, y: 160 }
-    }
+    if (clientPoint) return clientPoint
 
-    try {
-      const displayMode = instance.Core.documentViewer
-        .getDisplayModeManager()
-        .getDisplayMode()
-      const point = displayMode.pageToWindow(position, pageNumber)
+    const rect = viewerRef.current?.getBoundingClientRect()
 
-      return normalizeAprysePointToClient(viewerElement, point)
-    } catch {
-      const rect = viewerElement?.getBoundingClientRect()
-
-      return {
-        x: (rect?.left ?? 0) + 24,
-        y: (rect?.top ?? 0) + 140,
-      }
+    return {
+      x: (rect?.left ?? 0) + 24,
+      y: (rect?.top ?? 0) + 140,
     }
   }
 
@@ -1262,7 +1651,7 @@ export const AprysePdfViewer = forwardRef<
     }
 
     const bounds = getQuadBounds(safeQuads)
-    const position = {
+    const position = getTextAnchorFromQuads(safeQuads) ?? {
       x: bounds.maxX,
       y: bounds.minY,
     }
@@ -1272,7 +1661,6 @@ export const AprysePdfViewer = forwardRef<
       text: safeText,
       pageNumber,
       position,
-      clientPosition: getSelectionClientPosition(pageNumber, position),
     }
 
     scheduleCommentOverlayRefresh()
@@ -1357,7 +1745,7 @@ export const AprysePdfViewer = forwardRef<
         visualState: 'highlight',
         temporaryAnchorId: highlight.Id,
       },
-      selection.clientPosition,
+      getSelectionClientPosition(selection.pageNumber, selection.position),
     )
   }
 
@@ -1435,6 +1823,8 @@ export const AprysePdfViewer = forwardRef<
         force: true,
       })
     }
+    markerElementsRef.current.clear()
+    setCommentMarkerOverlays([])
 
     writeApryseDebugLog('renderCommentThreads-after-delete', {
       annotationsAfterDelete: getAnnotationManagerDebugData(instance),
@@ -1447,14 +1837,7 @@ export const AprysePdfViewer = forwardRef<
 
       if (annotation.status === 'deleted') continue
 
-      const visualState =
-        annotation.visualState ?? (annotation.xfdf ? 'highlight' : 'point')
-      let avatarAnchor:
-        | {
-            pageNumber: number
-            position: { x: number; y: number }
-          }
-        | null = null
+      const visualState = getThreadVisualState(thread)
 
       if (visualState === 'highlight' && annotation.xfdf) {
         try {
@@ -1463,7 +1846,11 @@ export const AprysePdfViewer = forwardRef<
               | AnyAnnotation[]
               | undefined) ?? []
 
+          if (renderSequenceRef.current !== sequence) return
+
           for (const importedAnnotation of importedAnnotations) {
+            if (renderSequenceRef.current !== sequence) return
+
             if (
               annotation.apryseAnnotationId &&
               importedAnnotation.Id !== annotation.apryseAnnotationId
@@ -1477,11 +1864,6 @@ export const AprysePdfViewer = forwardRef<
             setCommentAnchorStyle(instance, importedAnnotation)
             setCommentAnchorData(importedAnnotation, annotation._id)
             annotationManager.redrawAnnotation(importedAnnotation)
-
-            if (!avatarAnchor) {
-              avatarAnchor =
-                getAvatarMarkerAnchorFromAnnotation(importedAnnotation)
-            }
 
             writeApryseDebugLog('renderCommentThreads-imported-highlight', {
               annotationId: annotation._id,
@@ -1505,40 +1887,6 @@ export const AprysePdfViewer = forwardRef<
           hasXfdf: Boolean(annotation.xfdf),
           annotations: getAnnotationManagerDebugData(instance),
         })
-      }
-
-      if (
-        !avatarAnchor &&
-        typeof annotation.pageNumber === 'number' &&
-        annotation.position &&
-        typeof annotation.position.x === 'number' &&
-        typeof annotation.position.y === 'number'
-      ) {
-        avatarAnchor = {
-          pageNumber: annotation.pageNumber,
-          position: annotation.position,
-        }
-      }
-
-      if (avatarAnchor && showCommentAvatarMarkersRef.current) {
-        const avatarMarker = await createAvatarMarkerAnnotation({
-          threadId: annotation._id,
-          pageNumber: avatarAnchor.pageNumber,
-          anchor: avatarAnchor.position,
-        })
-
-        if (avatarMarker) {
-          annotationManager.addAnnotation(avatarMarker, {
-            imported: true,
-          })
-          annotationManager.redrawAnnotation(avatarMarker)
-
-          writeApryseDebugLog('renderCommentThreads-created-avatar-marker', {
-            annotationId: annotation._id,
-            visualState,
-            avatarMarker: getAnnotationDebugData(avatarMarker),
-          })
-        }
       }
     }
 
@@ -1613,12 +1961,68 @@ export const AprysePdfViewer = forwardRef<
 
   function handleOverlayMarkerClick(
     thread: CommentThread,
-    clientPosition: { x: number; y: number },
+    markerElement: HTMLElement,
   ) {
     const annotationId = thread.annotation._id
 
-    highlightCommentAnnotation(annotationId)
-    onCommentAnnotationClickRef.current?.(annotationId, clientPosition)
+    onCommentAnnotationClickRef.current?.(
+      annotationId,
+      getMarkerClientPosition(markerElement),
+    )
+  }
+
+  function handleOverlayMarkerHover(
+    thread: CommentThread,
+    markerElement: HTMLElement,
+  ) {
+    const annotationId = thread.annotation._id
+
+    if (lastHoveredThreadIdRef.current === annotationId) return
+
+    lastHoveredThreadIdRef.current = annotationId
+
+    if (markerHoverTimeoutRef.current !== null) {
+      window.clearTimeout(markerHoverTimeoutRef.current)
+    }
+
+    markerHoverTimeoutRef.current = window.setTimeout(() => {
+      markerHoverTimeoutRef.current = null
+      onCommentAnnotationClickRef.current?.(
+        annotationId,
+        getMarkerClientPosition(markerElement),
+      )
+
+      window.setTimeout(() => {
+        if (lastHoveredThreadIdRef.current === annotationId) {
+          lastHoveredThreadIdRef.current = null
+        }
+      }, 250)
+    }, 100)
+  }
+
+  function handleMarkerElementChange(
+    thread: CommentThread,
+    markerElement: HTMLElement | null,
+  ) {
+    const annotationId = thread.annotation._id
+
+    if (markerElement) {
+      markerElementsRef.current.set(annotationId, markerElement)
+      return
+    }
+
+    if (lastHoveredThreadIdRef.current === annotationId) {
+      lastHoveredThreadIdRef.current = null
+
+      if (markerHoverTimeoutRef.current !== null) {
+        window.clearTimeout(markerHoverTimeoutRef.current)
+        markerHoverTimeoutRef.current = null
+      }
+    }
+
+    if (markerElementsRef.current.get(annotationId)) {
+      markerElementsRef.current.delete(annotationId)
+    }
   }
 
   useEffect(() => {
@@ -1652,13 +2056,25 @@ export const AprysePdfViewer = forwardRef<
     showCommentAvatarMarkersRef.current = shouldShowAvatarMarkers
 
     if (!shouldShowAvatarMarkers) {
+      setCommentMarkerOverlays([])
+      markerElementsRef.current.clear()
+      lastHoveredThreadIdRef.current = null
+
+      if (markerHoverTimeoutRef.current !== null) {
+        window.clearTimeout(markerHoverTimeoutRef.current)
+        markerHoverTimeoutRef.current = null
+      }
+
       removeRenderedAvatarMarkers('show-comment-avatar-markers-disabled')
+      requestAnimationFrame(() => {
+        removeRenderedAvatarMarkers(
+          'show-comment-avatar-markers-disabled-after-frame',
+        )
+      })
       return
     }
 
-    renderCommentThreads(commentThreadsRef.current).catch((error) => {
-      console.warn('Failed to restore comment avatar markers:', error)
-    })
+    scheduleCommentOverlayRefresh()
   }, [showCommentAvatarMarkers])
 
   useEffect(() => {
@@ -1704,6 +2120,11 @@ export const AprysePdfViewer = forwardRef<
           'notesPanel',
           'notesPanelButton',
         ])
+        configureLockedZoomUi(instance)
+
+        if (viewerRef.current) {
+          bindZoomInputBlockers(viewerRef.current)
+        }
 
         configureCommentUi()
 
@@ -1764,11 +2185,13 @@ export const AprysePdfViewer = forwardRef<
           setCurrentPage(documentViewer.getCurrentPage())
           setPageCount(documentViewer.getPageCount())
 
-          UI.setFitMode(UI.FitMode.FitWidth)
+          configureLockedZoomUi(instance)
+          scheduleLockedZoomEnforcement('documentLoaded')
 
           writeApryseDebugLog('documentLoaded', {
             currentPage: documentViewer.getCurrentPage(),
             pageCount: documentViewer.getPageCount(),
+            zoomLevel: getCurrentZoomLevel(),
             annotationsBeforeRender: getAnnotationManagerDebugData(instance),
           })
 
@@ -1795,10 +2218,12 @@ export const AprysePdfViewer = forwardRef<
         )
 
         documentViewer.addEventListener('zoomUpdated', () => {
+          scheduleLockedZoomEnforcement('zoomUpdated')
           scheduleCommentOverlayRefresh()
         })
 
         documentViewer.addEventListener('fitModeUpdated', () => {
+          scheduleLockedZoomEnforcement('fitModeUpdated')
           scheduleCommentOverlayRefresh()
         })
 
@@ -1844,11 +2269,14 @@ export const AprysePdfViewer = forwardRef<
 
             if (!threadId) return
 
-            const markerAnnotation = findAvatarMarkerAnnotation(threadId)
+            const thread = findCommentThread(threadId)
+            const markerClientPosition = thread
+              ? getThreadMarkerClientPosition(thread)
+              : null
 
             onCommentAnnotationClickRef.current?.(
               threadId,
-              getAnnotationClientPosition(markerAnnotation ?? annotation),
+              markerClientPosition ?? getAnnotationClientPosition(annotation),
             )
           },
         )
@@ -1866,8 +2294,19 @@ export const AprysePdfViewer = forwardRef<
       temporaryAnchorIdRef.current = null
       documentLoadedRef.current = false
       pendingRenderThreadsRef.current = null
+      markerElementsRef.current.clear()
+      lastHoveredThreadIdRef.current = null
       overlayPositionCleanupRef.current?.()
       overlayPositionCleanupRef.current = null
+      zoomInputCleanupRef.current?.()
+      zoomInputCleanupRef.current = null
+      clearScheduledZoomEnforcement()
+      isEnforcingZoomRef.current = false
+
+      if (markerHoverTimeoutRef.current !== null) {
+        window.clearTimeout(markerHoverTimeoutRef.current)
+        markerHoverTimeoutRef.current = null
+      }
 
       if (overlayFrameRef.current !== null) {
         cancelAnimationFrame(overlayFrameRef.current)
@@ -1885,6 +2324,7 @@ export const AprysePdfViewer = forwardRef<
     documentLoadedRef.current = false
     pendingRenderThreadsRef.current = commentThreadsRef.current
     latestSelectionRef.current = null
+    markerElementsRef.current.clear()
     setSelectionActionPosition(null)
     setCommentMarkerOverlays([])
 
@@ -1897,6 +2337,7 @@ export const AprysePdfViewer = forwardRef<
     instance.UI.loadDocument(fileUrl, {
       filename: fileUrl.split('/').pop() ?? 'document.pdf',
     })
+    scheduleLockedZoomEnforcement('loadDocument')
   }, [fileUrl])
 
   useEffect(() => {
@@ -2151,18 +2592,25 @@ export const AprysePdfViewer = forwardRef<
 
   return (
     <div className="flex h-[calc(100vh-230px)] min-h-[70px] flex-col bg-stone-100">
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
         <div ref={viewerRef} className="h-full w-full" />
-      </div>
 
-      <CommentAnnotationOverlayLayer
-        hidden={isCommentOverlayHidden()}
-        selectionActionPosition={selectionActionPosition}
-        markers={commentMarkerOverlays}
-        activeAnnotationId={selectedCommentAnnotationId}
-        onAddComment={createPendingCommentAnchor}
-        onMarkerClick={handleOverlayMarkerClick}
-      />
+        <div
+          ref={overlayRef}
+          className="pointer-events-none absolute inset-0 z-30 overflow-hidden"
+        >
+          <CommentAnnotationOverlayLayer
+            hidden={isCommentOverlayHidden()}
+            selectionActionPosition={selectionActionPosition}
+            markers={commentMarkerOverlays}
+            activeAnnotationId={selectedCommentAnnotationId}
+            onAddComment={createPendingCommentAnchor}
+            onMarkerClick={handleOverlayMarkerClick}
+            onMarkerHover={handleOverlayMarkerHover}
+            onMarkerElementChange={handleMarkerElementChange}
+          />
+        </div>
+      </div>
 
       <PdfPageControls
         currentPage={currentPage}
