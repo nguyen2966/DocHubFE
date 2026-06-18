@@ -8,6 +8,7 @@ import {
 import WebViewerModule from '@pdftron/webviewer'
 import type { WebViewerInstance } from '@pdftron/webviewer'
 
+import AvatarMarkerImage from '../../../../assets/avatar.png'
 import type {
   EditedRect,
   PendingCommentAnchor,
@@ -32,6 +33,7 @@ interface AprysePdfViewerProps {
   commentThreads?: CommentThread[]
   selectedCommentAnnotationId?: string | null
   commentsDisabled?: boolean
+  showCommentAvatarMarkers?: boolean
 
   onCommentAnnotationClick?: (
     annotationId: string,
@@ -111,6 +113,16 @@ const COMMENT_ANCHOR_TYPE = 'comment_anchor'
 const COMMENT_THREAD_ID_KEY = 'commentThreadId'
 const COMMENT_ANCHOR_TYPE_KEY = 'commentAnchorType'
 const TEMPORARY_ANCHOR_KEY = 'temporaryCommentAnchor'
+const DOC_HUB_MANAGED_KEY = 'docHubManaged'
+const DOC_HUB_KIND_KEY = 'docHubKind'
+const DOC_HUB_ANNOTATION_ID_KEY = 'docHubAnnotationId'
+const DOC_HUB_ROLE_KEY = 'docHubApryseRole'
+const DOC_HUB_KIND_COMMENT_HIGHLIGHT = 'comment-highlight'
+const DOC_HUB_KIND_AVATAR_MARKER = 'avatar-marker'
+const DOC_HUB_KIND_PENDING_COMMENT_HIGHLIGHT = 'pending-comment-highlight'
+const AVATAR_MARKER_WIDTH = 24
+const AVATAR_MARKER_HEIGHT = 24
+const AVATAR_MARKER_GAP = 8
 
 const wait = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -562,6 +574,7 @@ function collectDegradedCommentAnnotationIds(
     new Set(
       annotations
         .filter((annotation: AnyAnnotation) => isCommentAnchor(annotation))
+        .filter((annotation: AnyAnnotation) => !isDocHubAvatarMarker(annotation))
         .filter((annotation: AnyAnnotation) => {
           const annotationRect = extractEditedRectFromPayload(annotation)
 
@@ -652,6 +665,8 @@ function getAnnotationDebugData(annotation: AnyAnnotation) {
     isCommentAnchor: isCommentAnchor(annotation),
     isTemporaryCommentAnchor: isTemporaryCommentAnchor(annotation),
     threadId: getThreadIdFromAnnotation(annotation),
+    docHubManaged: annotation?.getCustomData?.(DOC_HUB_MANAGED_KEY) ?? null,
+    docHubKind: annotation?.getCustomData?.(DOC_HUB_KIND_KEY) ?? null,
   }
 }
 
@@ -691,17 +706,51 @@ function writeApryseDebugLog(label: string, data: unknown) {
 }
 
 function isCommentAnchor(annotation: AnyAnnotation) {
-  return annotation?.getCustomData?.(COMMENT_ANCHOR_TYPE_KEY) === COMMENT_ANCHOR_TYPE
+  return (
+    annotation?.getCustomData?.(COMMENT_ANCHOR_TYPE_KEY) ===
+      COMMENT_ANCHOR_TYPE ||
+    annotation?.getCustomData?.(DOC_HUB_MANAGED_KEY) === 'true'
+  )
 }
 
 function isTemporaryCommentAnchor(annotation: AnyAnnotation) {
-  return annotation?.getCustomData?.(TEMPORARY_ANCHOR_KEY) === 'true'
+  return (
+    annotation?.getCustomData?.(TEMPORARY_ANCHOR_KEY) === 'true' ||
+    annotation?.getCustomData?.(DOC_HUB_KIND_KEY) ===
+      DOC_HUB_KIND_PENDING_COMMENT_HIGHLIGHT
+  )
 }
 
 function getThreadIdFromAnnotation(annotation: AnyAnnotation) {
-  const id = annotation?.getCustomData?.(COMMENT_THREAD_ID_KEY)
+  const id =
+    annotation?.getCustomData?.(DOC_HUB_ANNOTATION_ID_KEY) ??
+    annotation?.getCustomData?.(COMMENT_THREAD_ID_KEY)
 
   return typeof id === 'string' && id.length > 0 ? id : null
+}
+
+function getDocHubKind(annotation: AnyAnnotation) {
+  const kind = annotation?.getCustomData?.(DOC_HUB_KIND_KEY)
+
+  return typeof kind === 'string' ? kind : null
+}
+
+function isDocHubAvatarMarker(annotation: AnyAnnotation) {
+  return getDocHubKind(annotation) === DOC_HUB_KIND_AVATAR_MARKER
+}
+
+function setDocHubManagedData(
+  annotation: AnyAnnotation,
+  kind: string,
+  threadId: string | null,
+) {
+  annotation.setCustomData?.(DOC_HUB_MANAGED_KEY, 'true')
+  annotation.setCustomData?.(DOC_HUB_KIND_KEY, kind)
+  annotation.setCustomData?.(DOC_HUB_ROLE_KEY, kind)
+
+  if (threadId) {
+    annotation.setCustomData?.(DOC_HUB_ANNOTATION_ID_KEY, threadId)
+  }
 }
 
 function setCommentAnchorData(
@@ -710,6 +759,13 @@ function setCommentAnchorData(
   temporary = false,
 ) {
   annotation.setCustomData?.(COMMENT_ANCHOR_TYPE_KEY, COMMENT_ANCHOR_TYPE)
+  setDocHubManagedData(
+    annotation,
+    temporary
+      ? DOC_HUB_KIND_PENDING_COMMENT_HIGHLIGHT
+      : DOC_HUB_KIND_COMMENT_HIGHLIGHT,
+    threadId,
+  )
 
   if (threadId) {
     annotation.setCustomData?.(COMMENT_THREAD_ID_KEY, threadId)
@@ -733,21 +789,6 @@ function setCommentAnchorStyle(instance: WebViewerInstance, annotation: AnyAnnot
   annotation.NoDelete = true
 }
 
-function setCommentPointMarkerStyle(
-  instance: WebViewerInstance,
-  annotation: AnyAnnotation,
-) {
-  const { Annotations } = instance.Core
-
-  annotation.StrokeColor = new Annotations.Color(24, 92, 120)
-  annotation.FillColor = new Annotations.Color(255, 232, 128)
-  annotation.Opacity = 0.95
-  annotation.StrokeThickness = 2
-  annotation.NoMove = true
-  annotation.NoResize = true
-  annotation.NoDelete = true
-}
-
 export const AprysePdfViewer = forwardRef<
   AprysePdfViewerRef,
   AprysePdfViewerProps
@@ -758,6 +799,7 @@ export const AprysePdfViewer = forwardRef<
     commentThreads = [],
     selectedCommentAnnotationId,
     commentsDisabled,
+    showCommentAvatarMarkers = true,
     onCommentAnnotationClick,
     onPendingCommentAnchorCreated,
   },
@@ -773,6 +815,7 @@ export const AprysePdfViewer = forwardRef<
     selectedCommentAnnotationId ?? null,
   )
   const commentsDisabledRef = useRef(Boolean(commentsDisabled))
+  const showCommentAvatarMarkersRef = useRef(showCommentAvatarMarkers !== false)
   const isPdfEditingRef = useRef(isPdfEditing)
   const onCommentAnnotationClickRef = useRef(onCommentAnnotationClick)
   const onPendingCommentAnchorCreatedRef = useRef(
@@ -787,6 +830,7 @@ export const AprysePdfViewer = forwardRef<
   const lastDegradedAnnotationIdsRef = useRef<string[]>([])
   const documentLoadedRef = useRef(false)
   const pendingRenderThreadsRef = useRef<CommentThread[] | null>(null)
+  const avatarMarkerImageDataRef = useRef<string | null>(null)
   const overlayFrameRef = useRef<number | null>(null)
   const overlayPositionCleanupRef = useRef<(() => void) | null>(null)
 
@@ -802,6 +846,31 @@ export const AprysePdfViewer = forwardRef<
 
   function isCommentOverlayHidden() {
     return Boolean(commentsDisabledRef.current || isPdfEditingRef.current)
+  }
+
+  async function getAvatarMarkerImageData() {
+    if (avatarMarkerImageDataRef.current) {
+      return avatarMarkerImageDataRef.current
+    }
+
+    try {
+      const response = await fetch(AvatarMarkerImage)
+      const blob = await response.blob()
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+
+        reader.onload = () => resolve(String(reader.result))
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(blob)
+      })
+
+      avatarMarkerImageDataRef.current = dataUrl
+    } catch (error) {
+      console.warn('Failed to load avatar marker image data:', error)
+      avatarMarkerImageDataRef.current = AvatarMarkerImage
+    }
+
+    return avatarMarkerImageDataRef.current
   }
 
   function getAnnotationClientPosition(annotation: AnyAnnotation) {
@@ -820,7 +889,7 @@ export const AprysePdfViewer = forwardRef<
       const point = displayMode.pageToWindow(
         {
           x: annotation.X + annotation.Width,
-          y: annotation.Y,
+          y: annotation.Y + annotation.Height / 2,
         },
         annotation.PageNumber,
       )
@@ -862,6 +931,71 @@ export const AprysePdfViewer = forwardRef<
     return clientPosition
   }
 
+  function getAvatarMarkerAnchorFromAnnotation(annotation: AnyAnnotation) {
+    if (
+      typeof annotation?.PageNumber !== 'number' ||
+      typeof annotation?.X !== 'number' ||
+      typeof annotation?.Y !== 'number' ||
+      typeof annotation?.Width !== 'number' ||
+      typeof annotation?.Height !== 'number'
+    ) {
+      return null
+    }
+
+    return {
+      pageNumber: annotation.PageNumber,
+      position: {
+        x: annotation.X + annotation.Width,
+        y: annotation.Y + annotation.Height / 2,
+      },
+    }
+  }
+
+  async function createAvatarMarkerAnnotation({
+    threadId,
+    pageNumber,
+    anchor,
+  }: {
+    threadId: string
+    pageNumber: number
+    anchor: { x: number; y: number }
+  }) {
+    const instance = instanceRef.current
+
+    if (!instance) return null
+
+    const { Annotations } = instance.Core
+    const StampAnnotation = (Annotations as any).StampAnnotation
+
+    if (!StampAnnotation) {
+      console.warn('Apryse StampAnnotation is not available')
+      return null
+    }
+
+    const marker = new StampAnnotation() as AnyAnnotation
+    const imageData = await getAvatarMarkerImageData()
+
+    marker.PageNumber = pageNumber
+    marker.X = anchor.x + AVATAR_MARKER_GAP
+    marker.Y = anchor.y - AVATAR_MARKER_HEIGHT / 2
+    marker.Width = AVATAR_MARKER_WIDTH
+    marker.Height = AVATAR_MARKER_HEIGHT
+    marker.Subject = 'Comment avatar marker'
+    marker.Contents = 'Comment marker'
+    marker.NoMove = true
+    marker.NoResize = true
+    marker.NoDelete = true
+    marker.ReadOnly = true
+    marker.Listable = false
+
+    marker.ImageData = imageData
+    await marker.setImageData?.(imageData)
+
+    setDocHubManagedData(marker, DOC_HUB_KIND_AVATAR_MARKER, threadId)
+
+    return marker
+  }
+
   function refreshCommentOverlayPositions() {
     if (isCommentOverlayHidden()) {
       setSelectionActionPosition(null)
@@ -886,18 +1020,9 @@ export const AprysePdfViewer = forwardRef<
         : null,
     )
 
-    setCommentMarkerOverlays(
-      commentThreadsRef.current
-        .filter((thread) => thread.annotation.status !== 'deleted')
-        .map((thread) => {
-          const position = getThreadMarkerClientPosition(thread)
-
-          return position ? { thread, position } : null
-        })
-        .filter(
-          (marker): marker is CommentMarkerOverlay => marker !== null,
-        ),
-    )
+    // Persisted avatar markers are Apryse StampAnnotations. React overlay
+    // markers are intentionally disabled to avoid duplicate/drifting markers.
+    setCommentMarkerOverlays([])
   }
 
   function scheduleCommentOverlayRefresh() {
@@ -930,42 +1055,6 @@ export const AprysePdfViewer = forwardRef<
     }
   }
 
-  function createCommentPointMarker(thread: CommentThread) {
-    const instance = instanceRef.current
-
-    if (!instance) return null
-
-    const { annotationManager, Annotations } = instance.Core
-    const { annotation } = thread
-    const markerSize = 16
-    const MarkerAnnotation =
-      Annotations.EllipseAnnotation ?? Annotations.RectangleAnnotation
-    const marker = new MarkerAnnotation()
-
-    marker.PageNumber = annotation.pageNumber
-    marker.X = annotation.position.x - markerSize / 2
-    marker.Y = annotation.position.y - markerSize / 2
-    marker.Width = markerSize
-    marker.Height = markerSize
-    marker.Subject = 'Comment'
-    marker.Contents = 'Comment marker'
-
-    setCommentPointMarkerStyle(instance, marker)
-    setCommentAnchorData(marker, annotation._id)
-
-    annotationManager.addAnnotation(marker, {
-      imported: true,
-    })
-
-    if (annotation.apryseAnnotationId && marker.Id !== annotation.apryseAnnotationId) {
-      annotationManager.updateAnnotationId?.(marker, annotation.apryseAnnotationId)
-    }
-
-    annotationManager.redrawAnnotation(marker)
-
-    return marker
-  }
-
   function getThreadsWithOptimisticPointMarkers(annotationIds: string[]) {
     if (!annotationIds.length) return commentThreadsRef.current
 
@@ -994,12 +1083,31 @@ export const AprysePdfViewer = forwardRef<
 
     return (
       annotations.find((annotation: AnyAnnotation) => {
+        if (isDocHubAvatarMarker(annotation)) return false
+
         if (getThreadIdFromAnnotation(annotation) === annotationId) {
           return true
         }
 
         return annotation.Id === annotationId
       }) ?? null
+    )
+  }
+
+  function findAvatarMarkerAnnotation(annotationId: string) {
+    const instance = instanceRef.current
+
+    if (!instance) return null
+
+    const annotations =
+      instance.Core.annotationManager.getAnnotationsList?.() ?? []
+
+    return (
+      annotations.find(
+        (annotation: AnyAnnotation) =>
+          isDocHubAvatarMarker(annotation) &&
+          getThreadIdFromAnnotation(annotation) === annotationId,
+      ) ?? null
     )
   }
 
@@ -1029,7 +1137,7 @@ export const AprysePdfViewer = forwardRef<
     if (threadIds.has(annotation.Id)) return true
     if (apryseAnnotationIds.has(annotation.Id)) return true
 
-    return annotation.Subject === 'Comment'
+    return false
   }
 
   async function removeTemporaryCommentAnchor() {
@@ -1082,6 +1190,33 @@ export const AprysePdfViewer = forwardRef<
     }
 
     return commentAnchors
+  }
+
+  function removeRenderedAvatarMarkers(reason: string) {
+    const instance = instanceRef.current
+
+    if (!instance) return []
+
+    const { annotationManager } = instance.Core
+    const avatarMarkers = annotationManager
+      .getAnnotationsList()
+      .filter((annotation: AnyAnnotation) => isDocHubAvatarMarker(annotation))
+
+    writeApryseDebugLog('removeRenderedAvatarMarkers', {
+      reason,
+      avatarMarkersToRemove: avatarMarkers.map((annotation: AnyAnnotation) =>
+        getAnnotationDebugData(annotation),
+      ),
+    })
+
+    if (avatarMarkers.length > 0) {
+      annotationManager.deleteAnnotations(avatarMarkers, {
+        imported: true,
+        force: true,
+      })
+    }
+
+    return avatarMarkers
   }
 
   function getSelectionClientPosition(
@@ -1283,11 +1418,7 @@ export const AprysePdfViewer = forwardRef<
     const existingCommentAnchors = annotationManager
       .getAnnotationsList()
       .filter(
-        (annotation: AnyAnnotation) =>
-          isRenderedCommentAnnotation(annotation) &&
-          (!isTemporaryCommentAnchor(annotation) ||
-            Boolean(getThreadIdFromAnnotation(annotation)) ||
-            annotation.Subject === 'Comment'),
+        (annotation: AnyAnnotation) => isRenderedCommentAnnotation(annotation),
       )
 
     writeApryseDebugLog('renderCommentThreads-start', {
@@ -1316,47 +1447,98 @@ export const AprysePdfViewer = forwardRef<
 
       if (annotation.status === 'deleted') continue
 
-      if (annotation.visualState === 'point' || !annotation.xfdf) {
+      const visualState =
+        annotation.visualState ?? (annotation.xfdf ? 'highlight' : 'point')
+      let avatarAnchor:
+        | {
+            pageNumber: number
+            position: { x: number; y: number }
+          }
+        | null = null
+
+      if (visualState === 'highlight' && annotation.xfdf) {
+        try {
+          const importedAnnotations =
+            ((await annotationManager.importAnnotations(annotation.xfdf)) as
+              | AnyAnnotation[]
+              | undefined) ?? []
+
+          for (const importedAnnotation of importedAnnotations) {
+            if (
+              annotation.apryseAnnotationId &&
+              importedAnnotation.Id !== annotation.apryseAnnotationId
+            ) {
+              annotationManager.updateAnnotationId?.(
+                importedAnnotation,
+                annotation.apryseAnnotationId,
+              )
+            }
+
+            setCommentAnchorStyle(instance, importedAnnotation)
+            setCommentAnchorData(importedAnnotation, annotation._id)
+            annotationManager.redrawAnnotation(importedAnnotation)
+
+            if (!avatarAnchor) {
+              avatarAnchor =
+                getAvatarMarkerAnchorFromAnnotation(importedAnnotation)
+            }
+
+            writeApryseDebugLog('renderCommentThreads-imported-highlight', {
+              annotationId: annotation._id,
+              importedAnnotation: getAnnotationDebugData(importedAnnotation),
+              xfdfIncludesTemporaryFlag: annotation.xfdf.includes(
+                TEMPORARY_ANCHOR_KEY,
+              ),
+            })
+          }
+        } catch (error) {
+          console.warn(
+            'Failed to import comment annotation:',
+            annotation._id,
+            error,
+          )
+        }
+      } else {
         writeApryseDebugLog('renderCommentThreads-skipped-native-point-marker', {
           annotationId: annotation._id,
-          visualState: annotation.visualState,
+          visualState,
           hasXfdf: Boolean(annotation.xfdf),
           annotations: getAnnotationManagerDebugData(instance),
         })
-        continue
       }
 
-      try {
-        const importedAnnotations =
-          ((await annotationManager.importAnnotations(annotation.xfdf)) as
-            | AnyAnnotation[]
-            | undefined) ?? []
+      if (
+        !avatarAnchor &&
+        typeof annotation.pageNumber === 'number' &&
+        annotation.position &&
+        typeof annotation.position.x === 'number' &&
+        typeof annotation.position.y === 'number'
+      ) {
+        avatarAnchor = {
+          pageNumber: annotation.pageNumber,
+          position: annotation.position,
+        }
+      }
 
-        for (const importedAnnotation of importedAnnotations) {
-          if (
-            annotation.apryseAnnotationId &&
-            importedAnnotation.Id !== annotation.apryseAnnotationId
-          ) {
-            annotationManager.updateAnnotationId?.(
-              importedAnnotation,
-              annotation.apryseAnnotationId,
-            )
-          }
+      if (avatarAnchor && showCommentAvatarMarkersRef.current) {
+        const avatarMarker = await createAvatarMarkerAnnotation({
+          threadId: annotation._id,
+          pageNumber: avatarAnchor.pageNumber,
+          anchor: avatarAnchor.position,
+        })
 
-          setCommentAnchorStyle(instance, importedAnnotation)
-          setCommentAnchorData(importedAnnotation, annotation._id)
-          annotationManager.redrawAnnotation(importedAnnotation)
+        if (avatarMarker) {
+          annotationManager.addAnnotation(avatarMarker, {
+            imported: true,
+          })
+          annotationManager.redrawAnnotation(avatarMarker)
 
-          writeApryseDebugLog('renderCommentThreads-imported-highlight', {
+          writeApryseDebugLog('renderCommentThreads-created-avatar-marker', {
             annotationId: annotation._id,
-            importedAnnotation: getAnnotationDebugData(importedAnnotation),
-            xfdfIncludesTemporaryFlag: annotation.xfdf.includes(
-              TEMPORARY_ANCHOR_KEY,
-            ),
+            visualState,
+            avatarMarker: getAnnotationDebugData(avatarMarker),
           })
         }
-      } catch (error) {
-        console.warn('Failed to import comment annotation:', annotation._id, error)
       }
     }
 
@@ -1464,6 +1646,20 @@ export const AprysePdfViewer = forwardRef<
     configureCommentUi()
     scheduleCommentOverlayRefresh()
   }, [commentsDisabled])
+
+  useEffect(() => {
+    const shouldShowAvatarMarkers = showCommentAvatarMarkers !== false
+    showCommentAvatarMarkersRef.current = shouldShowAvatarMarkers
+
+    if (!shouldShowAvatarMarkers) {
+      removeRenderedAvatarMarkers('show-comment-avatar-markers-disabled')
+      return
+    }
+
+    renderCommentThreads(commentThreadsRef.current).catch((error) => {
+      console.warn('Failed to restore comment avatar markers:', error)
+    })
+  }, [showCommentAvatarMarkers])
 
   useEffect(() => {
     isPdfEditingRef.current = isPdfEditing
@@ -1618,6 +1814,24 @@ export const AprysePdfViewer = forwardRef<
           (annotations: AnyAnnotation[], action: string) => {
             if (action !== 'selected') return
 
+            const avatarMarker = annotations.find((item) => {
+              const threadId = getThreadIdFromAnnotation(item)
+
+              return Boolean(threadId) && isDocHubAvatarMarker(item)
+            })
+
+            if (avatarMarker) {
+              const threadId = getThreadIdFromAnnotation(avatarMarker)
+
+              if (!threadId) return
+
+              onCommentAnnotationClickRef.current?.(
+                threadId,
+                getAnnotationClientPosition(avatarMarker),
+              )
+              return
+            }
+
             const annotation = annotations.find((item) => {
               const threadId = getThreadIdFromAnnotation(item)
 
@@ -1630,9 +1844,11 @@ export const AprysePdfViewer = forwardRef<
 
             if (!threadId) return
 
+            const markerAnnotation = findAvatarMarkerAnnotation(threadId)
+
             onCommentAnnotationClickRef.current?.(
               threadId,
-              getAnnotationClientPosition(annotation),
+              getAnnotationClientPosition(markerAnnotation ?? annotation),
             )
           },
         )
