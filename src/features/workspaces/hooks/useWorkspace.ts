@@ -1,65 +1,48 @@
 import { useEffect, useState } from 'react'
-import { workspaceService } from '../services/workspace.service'
-import { Workspace } from '../types/workspace.type'
 
-export function useWorkspaces() {
+import type { PagePaginatedMeta } from '../../../shared/types/pagination.type'
+import { workspaceService } from '../services/workspace.service'
+import type { Workspace } from '../types/workspace.type'
+
+const WORKSPACE_PAGE_LIMIT = 7
+
+export function useWorkspaces(page = 1) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(false)
+  const [meta, setMeta] = useState<PagePaginatedMeta | undefined>()
   const [isLoading, setIsLoading] = useState(true)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [isFetching, setIsFetching] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchWorkspaces = async () => {
-    setIsLoading(true)
+    setIsFetching(true)
     setError(null)
 
     try {
-      const result = await workspaceService.getWorkspaces();
-     // console.log(result);
-
-      setWorkspaces(result.data);
-      setNextCursor(result.meta.nextCursor);
-      setHasMore(result.meta.hasMore);
-    } catch {
-      setError('Could not load workspaces.');
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  const loadMore = async () => {
-    if (!nextCursor || isLoadingMore) return
-
-    setIsLoadingMore(true)
-
-    try {
       const result = await workspaceService.getWorkspaces({
-        cursor: nextCursor,
+        page,
+        limit: WORKSPACE_PAGE_LIMIT,
       })
 
-      setWorkspaces((prev) => [...prev, ...result.data])
-      setNextCursor(result.meta.nextCursor)
-      setHasMore(result.meta.hasMore)
+      setWorkspaces(result.data)
+      setMeta(result.meta)
     } catch {
-      setError('Could not load more workspaces.')
+      setError('Could not load workspaces.')
     } finally {
-      setIsLoadingMore(false)
+      setIsLoading(false)
+      setIsFetching(false)
     }
   }
 
   useEffect(() => {
     fetchWorkspaces()
-  }, [])
+  }, [page])
 
   return {
     workspaces,
-    nextCursor,
-    hasMore,
+    meta,
     isLoading,
-    isLoadingMore,
+    isFetching,
     error,
     refetch: fetchWorkspaces,
-    loadMore,
   }
 }

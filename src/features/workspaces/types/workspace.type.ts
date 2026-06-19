@@ -1,3 +1,5 @@
+import type { PagePaginatedResponse } from '../../../shared/types/pagination.type'
+
 export type WorkspaceRole = 'admin' | 'member';
 
 export type WorkspacePermission =
@@ -26,13 +28,7 @@ export interface Workspace {
   updatedAt?: string
 }
 
-export interface PaginatedResponse<T> {
-  data: T[]
-  meta: {
-    nextCursor: string | null
-    hasMore: boolean
-  }
-}
+export type WorkspaceListResponse = PagePaginatedResponse<Workspace>
 
 export interface Member {
   _id: string

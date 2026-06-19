@@ -1,13 +1,17 @@
 import { CaretLeft, CaretRight } from '@phosphor-icons/react'
-import type { PagePaginatedMeta } from '../types/activity.type'
 
-interface ActivityPaginationProps {
+import type { PagePaginatedMeta } from '../types/pagination.type'
+
+interface PaginationProps {
   meta?: PagePaginatedMeta
   onPageChange: (page: number) => void
   disabled?: boolean
 }
 
-function getVisiblePages(page: number, totalPages: number): Array<number | '...'> {
+function getVisiblePages(
+  page: number,
+  totalPages: number,
+): Array<number | '...'> {
   if (totalPages <= 5) {
     return Array.from({ length: totalPages }, (_, index) => index + 1)
   }
@@ -23,11 +27,11 @@ function getVisiblePages(page: number, totalPages: number): Array<number | '...'
   return [1, '...', page - 1, page, page + 1, '...', totalPages]
 }
 
-export function ActivityPagination({
+export function Pagination({
   meta,
   onPageChange,
   disabled = false,
-}: ActivityPaginationProps) {
+}: PaginationProps) {
   if (!meta || meta.totalPages <= 1) return null
 
   const pages = getVisiblePages(meta.page, meta.totalPages)

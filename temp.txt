@@ -1,363 +1,644 @@
-Fix inconsistent avatar marker coordinate source after creating comments.
+You are working on the DocHubFE React + TypeScript frontend.
 
-Current bug:
-On a completely new document, each created comment only renders one avatar marker. However, some markers behave correctly as page-bound markup, while some markers behave incorrectly as viewport-fixed markup when scrolling.
+Goal: Update frontend pagination for workspace list and document list to match the new backend page-based paginated response format.
 
-This means the issue is not duplicate rendering.
+Backend now returns page-based pagination for:
 
-Root cause to investigate:
-Some marker instances are probably created from PDF page coordinates, while others are created from viewport/client/overlay coordinates.
+```txt
+GET /workspaces?page=1&limit=10
+GET /workspaces/:workspaceId/documents?page=1&limit=10
+```
 
-Correct behavior:
-Every persisted avatar marker must use the same source of truth:
+Response format:
 
-* pageNumber
-* pageRect in PDF page coordinates
+```ts
+{
+  data: T[]
+  meta: {
+    page: number
+    limit: number
+    totalItems: number
+    totalPages: number
+    hasNextPage: boolean
+    hasPreviousPage: boolean
+  }
+}
+```
 
-Never use viewport/client/overlay coordinates as the persisted marker source.
+Important UI rule:
 
-Important distinction:
+* Workspace list UI has no filters.
+* Document list UI has no filters.
+* Workspace list UI does not need item-per-page selection.
+* Document list UI does not need item-per-page selection.
+* Always use a fixed default page size of `10`.
+* Do not create any limit dropdown/select.
+* Only manage `page` state in the UI.
 
-* page coordinate / pageRect: used to render avatar marker.
-* clientPosition / DOMRect: used only to position CommentThreadPopover.
-* overlayRect: derived render output only, never source of truth.
+Remove usage of:
 
-Scope:
+* `cursor`
+* `nextCursor`
+* `hasMore`
+* `loadMore`
+* item-per-page selection UI
 
-* FE only.
-* Do not modify BE.
-* Do not change API payload shape.
-* Do not change comment data model.
-* Keep locked zoom behavior.
-* Keep React page-bound avatar markup.
-* Do not use Apryse StampAnnotation for avatar markers.
-* Do not reintroduce viewport-fixed avatar markers.
-* Keep native Apryse highlight rendering.
+============================================================
+PART 1 — Create shared pagination component
+===========================================
 
-Files to inspect/update:
+Activity logs already have a pagination component:
 
-* src/features/documents/components/details-page/AprysePdfViewer.tsx
-* src/features/comments/components/CommentAnnotationOverlayLayer.tsx
-* src/features/comments/components/CommentAnchorMarker.tsx
-* src/pages/document-details/DocumentDetailPage.tsx
-* any file involved in createPendingCommentAnchor / submit comment / pending anchor state
+```txt
+src/features/activity/components/ActivityPagination.tsx
+```
 
-Main requirement:
-There must be exactly one coordinate pipeline for persisted avatar markers:
+That component is generic enough to reuse because it only depends on:
 
-PDF page coordinate/pageRect
-→ project to overlayRect for current viewer scroll/layout
-→ render React marker absolute inside viewer overlay
+```ts
+meta.page
+meta.totalPages
+meta.hasNextPage
+meta.hasPreviousPage
+onPageChange
+disabled
+```
 
-There must be no path where persisted marker source is:
+Create a shared component:
 
-* clientPosition
-* getBoundingClientRect
-* overlayPosition
-* pageToWindow output directly
-* mouse event x/y
-* SelectionCommentAction position
-* popover position
+```txt
+src/shared/components/Pagination.tsx
+```
 
-1. Audit all marker creation paths
+Suggested implementation:
 
-Search for:
+```tsx
+import { CaretLeft, CaretRight } from '@phosphor-icons/react'
 
-* commentMarkerOverlays
-* projectedMarkers
-* pageAnchoredMarkers
-* pageRect
-* overlayRect
-* clientPosition
-* getSelectionClientPosition
-* getThreadMarkerClientPosition
-* getAnnotationClientPosition
-* createPendingCommentAnchor
-* handleSubmitComment
-* onCommentCreated
-* pendingCommentAnchor
-* pageToWindow
-* getBoundingClientRect
-
-Find every place where an avatar marker is created or updated.
-
-For persisted avatar markers, remove any branch that uses client/viewport coordinates as marker source.
-
-2. Enforce marker model with explicit types
-
-Use types like:
-
-type PagePoint = {
-pageNumber: number
-x: number
-y: number
+export interface PagePaginatedMeta {
+  page: number
+  limit: number
+  totalItems: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
 }
 
-type PageRect = {
-x: number
-y: number
-width: number
-height: number
+interface PaginationProps {
+  meta?: PagePaginatedMeta
+  onPageChange: (page: number) => void
+  disabled?: boolean
 }
 
-type PageBoundAvatarMarker = {
-annotationId: string
-thread: CommentThread
-pageNumber: number
-pageRect: PageRect
+function getVisiblePages(page: number, totalPages: number): Array<number | '...'> {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1)
+  }
+
+  if (page <= 3) {
+    return [1, 2, 3, 4, '...', totalPages]
+  }
+
+  if (page >= totalPages - 2) {
+    return [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages]
+  }
+
+  return [1, '...', page - 1, page, page + 1, '...', totalPages]
 }
 
-type ProjectedAvatarMarker = PageBoundAvatarMarker & {
-overlayRect: {
-left: number
-top: number
-width: number
-height: number
+export function Pagination({
+  meta,
+  onPageChange,
+  disabled = false,
+}: PaginationProps) {
+  if (!meta || meta.totalPages <= 1) return null
+
+  const pages = getVisiblePages(meta.page, meta.totalPages)
+
+  return (
+    <div className="mt-5 flex items-center justify-center gap-1">
+      <button
+        type="button"
+        disabled={disabled || !meta.hasPreviousPage}
+        onClick={() => onPageChange(meta.page - 1)}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <CaretLeft size={16} />
+      </button>
+
+      {pages.map((pageItem, index) => {
+        if (pageItem === '...') {
+          return (
+            <span
+              key={`ellipsis-${index}`}
+              className="inline-flex h-8 min-w-8 items-center justify-center px-2 text-sm font-medium text-stone-700"
+            >
+              ...
+            </span>
+          )
+        }
+
+        const active = pageItem === meta.page
+
+        return (
+          <button
+            key={pageItem}
+            type="button"
+            disabled={disabled || active}
+            onClick={() => onPageChange(pageItem)}
+            className={`inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-sm font-medium transition ${
+              active
+                ? 'border border-stone-200 bg-white text-stone-950 shadow-sm'
+                : 'text-stone-900 hover:bg-stone-100'
+            } disabled:cursor-default`}
+          >
+            {pageItem}
+          </button>
+        )
+      })}
+
+      <button
+        type="button"
+        disabled={disabled || !meta.hasNextPage}
+        onClick={() => onPageChange(meta.page + 1)}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <CaretRight size={16} />
+      </button>
+    </div>
+  )
 }
+```
+
+Then update Activity logs to use this shared component.
+
+In:
+
+```txt
+src/pages/workspace/WorkspaceActivityPage.tsx
+```
+
+Replace:
+
+```tsx
+import { ActivityPagination } from '../../features/activity/components/ActivityPagination'
+```
+
+with:
+
+```tsx
+import { Pagination } from '../../shared/components/Pagination'
+```
+
+And replace:
+
+```tsx
+<ActivityPagination
+  meta={logsQuery.data?.meta}
+  disabled={logsQuery.isFetching}
+  onPageChange={setPage}
+/>
+```
+
+with:
+
+```tsx
+<Pagination
+  meta={logsQuery.data?.meta}
+  disabled={logsQuery.isFetching}
+  onPageChange={setPage}
+/>
+```
+
+Delete `ActivityPagination.tsx` only if no imports remain. Otherwise leave it temporarily.
+
+============================================================
+PART 2 — Create shared pagination types
+=======================================
+
+Create this file if it does not exist:
+
+```txt
+src/shared/types/pagination.type.ts
+```
+
+Content:
+
+```ts
+export interface PagePaginatedMeta {
+  page: number
+  limit: number
+  totalItems: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
 }
 
-Rules:
-
-* PageBoundAvatarMarker is source.
-* ProjectedAvatarMarker is derived render state.
-* Never create PageBoundAvatarMarker from clientPosition or overlayRect.
-* Never save overlayRect back into pageRect.
-
-3. Fix comment creation flow
-
-When user selects text and creates a comment:
-
-createPendingCommentAnchor should produce:
-
-* pageNumber
-* position in PDF page coordinates
-* xfdf if visualState is highlight
-* apryseAnnotationId
-* visualState
-
-The position must be derived from Apryse selection/page geometry, not from the Add Comment button position or mouse/client coordinates.
-
-If current code has something like:
-
-* selectionActionPosition
-* clientPosition
-* normalizedClientPosition
-* overlay position
-
-Do not use it for annotation.position.
-
-It can only be used for:
-
-* placing temporary Add Comment button
-* opening CommentComposer
-* opening CommentThreadPopover
-
-4. Build avatar marker only from thread annotation data or imported highlight geometry
-
-For each thread:
-
-const visualState =
-annotation.visualState ?? (annotation.xfdf ? "highlight" : "point")
-
-If visualState === "highlight" and imported highlight annotation exists:
-
-* use imported highlight geometry as primary source:
-
-pageNumber = importedHighlight.PageNumber
-anchorX = importedHighlight.X + importedHighlight.Width
-anchorY = importedHighlight.Y + importedHighlight.Height / 2
-
-If imported highlight geometry is unavailable:
-
-* fallback only to annotation.position if it is known to be PDF page coordinate.
-* never fallback to clientPosition.
-
-If visualState === "point":
-
-* use annotation.position and annotation.pageNumber.
-* skip stale xfdf.
-
-Then create pageRect from page coordinate constants:
-
-pageRect = {
-x: anchorX + AVATAR_MARKER_GAP_PAGE,
-y: anchorY - AVATAR_MARKER_HEIGHT_PAGE / 2,
-width: AVATAR_MARKER_WIDTH_PAGE,
-height: AVATAR_MARKER_HEIGHT_PAGE,
+export interface PagePaginatedResponse<T> {
+  data: T[]
+  meta: PagePaginatedMeta
 }
+```
 
-5. Add coordinate invariant guards
+Use this shared type for workspace and document list responses.
 
-Add development-only warnings when marker source looks suspicious.
+Do not over-refactor activity types unless it is simple and safe.
 
-Example checks:
+============================================================
+PART 3 — Update workspace frontend pagination
+=============================================
 
-* pageNumber must be >= 1
-* pageRect.x/y should be reasonable for page size
-* pageRect.width/height should be small page units, not huge viewport pixels
-* pageRect should not equal overlay/client coordinates
+Files to inspect and update:
 
-If possible, get page dimensions from document:
+```txt
+src/features/workspaces/types/workspace.type.ts
+src/features/workspaces/services/workspace.service.ts
+src/features/workspaces/hooks/useWorkspace.ts
+src/pages/workspace-list/WorkspaceListPage.tsx
+```
 
-* page width / height
-* warn if x/y are outside a reasonable page range
+Current problem:
 
-Example warning:
+* Workspace FE still uses cursor pagination:
 
-console.warn('[DocHub marker] Invalid pageRect source; refusing to render viewport-based marker', {
-annotationId,
-pageNumber,
-pageRect,
-pageSize,
-source,
+  * `nextCursor`
+  * `hasMore`
+  * `loadMore`
+* Backend now uses page-based pagination.
+
+Required behavior:
+
+* Keep only `page` state.
+* Always request `limit: 10`.
+* Do not create limit selection UI.
+* Do not use load more.
+
+Use this constant:
+
+```ts
+const WORKSPACE_PAGE_LIMIT = 10
+```
+
+1. Update workspace response type
+
+In `workspace.type.ts`, remove or stop using cursor pagination shape:
+
+```ts
+nextCursor: string | null
+hasMore: boolean
+```
+
+Use:
+
+```ts
+import type { PagePaginatedResponse } from '../../../shared/types/pagination.type'
+
+export type WorkspaceListResponse = PagePaginatedResponse<Workspace>
+```
+
+Or update the existing `PaginatedResponse<T>` to page-based if that is less invasive.
+
+2. Update workspace service
+
+Change:
+
+```ts
+getWorkspaces(params?: { cursor?: string; limit?: number })
+```
+
+to:
+
+```ts
+getWorkspaces(params?: { page?: number; limit?: number })
+```
+
+Implementation concept:
+
+```ts
+getWorkspaces(params?: { page?: number; limit?: number }) {
+  return api
+    .get<PagePaginatedResponse<Workspace>>('/workspaces', {
+      params,
+    })
+    .then((res) => res.data)
+}
+```
+
+Do not send `cursor`.
+
+3. Update `useWorkspaces`
+
+Replace cursor/load-more logic with page-based logic.
+
+Suggested hook:
+
+```ts
+import { useEffect, useState } from 'react'
+import { workspaceService } from '../services/workspace.service'
+import type { Workspace } from '../types/workspace.type'
+import type { PagePaginatedMeta } from '../../../shared/types/pagination.type'
+
+const WORKSPACE_PAGE_LIMIT = 10
+
+export function useWorkspaces(page = 1) {
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([])
+  const [meta, setMeta] = useState<PagePaginatedMeta | undefined>()
+  const [isLoading, setIsLoading] = useState(true)
+  const [isFetching, setIsFetching] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchWorkspaces = async () => {
+    setIsFetching(true)
+    setError(null)
+
+    try {
+      const result = await workspaceService.getWorkspaces({
+        page,
+        limit: WORKSPACE_PAGE_LIMIT,
+      })
+
+      setWorkspaces(result.data)
+      setMeta(result.meta)
+    } catch {
+      setError('Could not load workspaces.')
+    } finally {
+      setIsLoading(false)
+      setIsFetching(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchWorkspaces()
+  }, [page])
+
+  return {
+    workspaces,
+    meta,
+    isLoading,
+    isFetching,
+    error,
+    refetch: fetchWorkspaces,
+  }
+}
+```
+
+Important:
+
+* Do not expose `limit` from the hook.
+* Do not expose `loadMore`.
+* Do not expose `nextCursor`.
+* Do not expose `hasMore`.
+
+4. Update `WorkspaceListPage`
+
+Add page state:
+
+```tsx
+const [page, setPage] = useState(1)
+```
+
+Use:
+
+```tsx
+const {
+  workspaces,
+  meta,
+  isLoading,
+  isFetching,
+  error,
+} = useWorkspaces(page)
+```
+
+Render shared pagination under `WorkspaceGrid`:
+
+```tsx
+<Pagination
+  meta={meta}
+  disabled={isFetching}
+  onPageChange={setPage}
+/>
+```
+
+Make sure to import:
+
+```tsx
+import { Pagination } from '../../shared/components/Pagination'
+```
+
+============================================================
+PART 4 — Update documents frontend pagination
+=============================================
+
+Files to inspect and update:
+
+```txt
+src/features/documents/types/document.type.ts
+src/features/documents/service/document.service.ts
+src/features/documents/hooks/useDocuments.ts
+src/pages/workspace/WorkspaceDocumentsPage.tsx
+```
+
+File names may vary slightly. Inspect the project and update the actual matching files.
+
+Required behavior:
+
+* Keep only `page` state.
+* Always request `limit: 10`.
+* Do not create limit selection UI.
+* Do not use load more.
+* Do not use cursor pagination.
+
+Use this constant:
+
+```ts
+const DOCUMENT_PAGE_LIMIT = 10
+```
+
+1. Update document service
+
+Change `getDocuments` to accept page params:
+
+```ts
+getDocuments(
+  workspaceId: string,
+  params?: {
+    page?: number
+    limit?: number
+  },
+)
+```
+
+Expected return type:
+
+```ts
+PagePaginatedResponse<Document>
+```
+
+Implementation concept:
+
+```ts
+async getDocuments(
+  workspaceId: string,
+  params?: { page?: number; limit?: number },
+): Promise<PagePaginatedResponse<Document>> {
+  const res = await api.get<PagePaginatedResponse<Document>>(
+    `/workspaces/${workspaceId}/documents`,
+    { params },
+  )
+
+  return res.data
+}
+```
+
+Make sure the endpoint path matches the existing service path style.
+
+2. Update `useDocuments`
+
+Use normal `useQuery`, not `useInfiniteQuery`.
+
+Suggested hook:
+
+```ts
+import { useQuery } from '@tanstack/react-query'
+import { documentService } from '../service/document.service'
+
+const DOCUMENT_PAGE_LIMIT = 10
+
+export function useDocuments(
+  workspaceId?: string,
+  page = 1,
+) {
+  return useQuery({
+    queryKey: ['documents', workspaceId, page],
+    queryFn: () =>
+      documentService.getDocuments(workspaceId!, {
+        page,
+        limit: DOCUMENT_PAGE_LIMIT,
+      }),
+    enabled: Boolean(workspaceId),
+    placeholderData: (previousData) => previousData,
+  })
+}
+```
+
+Important:
+
+* Do not expose `limit` from the hook.
+* The query result data is now:
+
+  ```ts
+  {
+    data: Document[]
+    meta: PagePaginatedMeta
+  }
+  ```
+* It is not `Document[]` anymore.
+
+3. Update document mutations invalidation if needed
+
+Existing mutations probably invalidate:
+
+```ts
+queryClient.invalidateQueries({
+  queryKey: ['documents', workspaceId],
 })
+```
 
-If pageRect is invalid, do not render marker rather than rendering a viewport-fixed marker.
+This should still work if the query key starts with `['documents', workspaceId]`.
 
-6. Project pageRect to overlayRect in exactly one helper
+If invalidation is too exact and only targets the old query key, update it to prefix invalidation:
 
-Use one helper only:
-
-pageRectToOverlayRect({
-pageNumber,
-rect,
+```ts
+queryClient.invalidateQueries({
+  queryKey: ['documents', workspaceId],
 })
+```
 
-It should:
+4. Update `WorkspaceDocumentsPage`
 
-* take PDF page rect.
-* use Apryse pageToWindow for top-left and bottom-right.
-* convert to client coordinate if needed.
-* subtract overlayRoot.getBoundingClientRect().
-* return overlay-relative rect.
+Add page state:
 
-This helper must be the only place where page coordinates become screen/overlay coordinates.
+```tsx
+const [page, setPage] = useState(1)
+```
 
-7. Do not persist or reuse overlayRect
+Use:
 
-On scroll/page change:
+```tsx
+const documentsQuery = useDocuments(workspaceId, page)
 
-* recompute overlayRect from original pageRect.
-* do not mutate pageRect.
-* do not use previous overlayRect as source.
+const documents = documentsQuery.data?.data ?? []
+const meta = documentsQuery.data?.meta
+```
 
-On commentThreads refetch:
+Render pagination under the documents table/grid:
 
-* rebuild PageBoundAvatarMarker from annotation/page geometry.
-* project again.
+```tsx
+<Pagination
+  meta={meta}
+  disabled={documentsQuery.isFetching}
+  onPageChange={setPage}
+/>
+```
 
-8. Pending/new comment marker behavior
+Make sure existing rendering still works:
 
-After submitting a new comment:
+```tsx
+<DocumentTable
+  workspaceId={workspaceId}
+  documents={documents}
+/>
+```
 
-* clear pending composer state.
-* clear temporary selection UI.
-* do not render final avatar marker from pending client coordinates.
-* final marker should appear from:
+or whatever the current component expects.
 
-  * returned/refetched thread annotation data
-  * or imported highlight geometry tagged with the Mongo annotation id
+Preserve:
 
-If there is an optimistic marker:
+* existing document empty state
+* existing document create/upload modal behavior
+* existing document delete/rename/share behavior
+* existing loading and error UI
 
-* it must also use pageRect derived from PDF page coordinate.
-* otherwise disable optimistic persisted marker and wait for refetch.
+============================================================
+PART 5 — Do not change
+======================
 
-9. CommentAnchorMarker must not be fixed
+Do not modify:
 
-Verify persisted marker component:
+* Backend code
+* API endpoint names
+* Auth logic
+* Permission utils
+* Document table/card UI except for passing paginated data
+* Activity log behavior except moving pagination component to shared
+* Apryse/PDF viewer
+* Upload progress logic
+* Share modal logic
 
-* no position: fixed
-* no className fixed
-* no viewport left/top source
-* no clientPosition prop
+Do not add:
 
-It should receive only overlayRect:
+* filter UI
+* page-size selector
+* item-per-page selector
+* load-more button
 
-style={{
-position: 'absolute',
-left: overlayRect.left,
-top: overlayRect.top,
-width: overlayRect.width,
-height: overlayRect.height,
-}}
+============================================================
+PART 6 — Quality requirements
+=============================
 
-10. CommentThreadPopover can still use clientPosition
+After changes:
 
-Popover is allowed to be viewport fixed.
+* TypeScript should compile.
+* No unused imports.
+* No references to workspace `nextCursor`, `hasMore`, or `loadMore`.
+* No document list code should expect `Document[]` directly from `useDocuments`.
+* Workspace list should use numbered pagination with fixed `limit = 10`.
+* Documents list should use numbered pagination with fixed `limit = 10`.
+* Activity logs should still work with the shared `Pagination` component.
+* Pagination UI should be visually consistent across:
 
-When user clicks marker:
+  * Activity logs
+  * Workspace list
+  * Documents list
 
-* use marker DOMRect to compute clientPosition:
-  rect.right
-  rect.top + rect.height / 2
-
-This clientPosition is only for popover placement.
-Do not feed it back into avatar marker state.
-
-11. Add debugging log to prove the fix
-
-Temporarily add a debug log when marker is built:
-
-console.debug('[DocHub marker source]', {
-annotationId,
-source: 'imported-highlight' | 'annotation-position',
-pageNumber,
-pageRect,
-overlayRect,
-})
-
-Expected:
-
-* Every marker should have source imported-highlight or annotation-position.
-* No marker should have source clientPosition, overlayPosition, DOMRect, or selectionButton.
-
-12. Manual test checklist
-
-Create a new document and test:
-
-1. Create comment on selected text.
-2. Confirm exactly one marker appears.
-3. Scroll down:
-
-   * marker should move with PDF page.
-   * marker should disappear when its page area scrolls out of view.
-   * marker must not stay fixed on viewport.
-4. Create another comment on another text selection.
-5. Scroll:
-
-   * this marker must also behave page-bound.
-6. Repeat 5-10 times:
-
-   * every marker must behave the same way.
-   * no random marker should be viewport-fixed.
-7. Reload page:
-
-   * all persisted markers behave page-bound.
-8. Open sidebar:
-
-   * markers hidden.
-9. Close sidebar:
-
-   * markers reappear and remain page-bound.
-10. Click marker:
-
-* popover opens to right of marker.
-* marker does not shift.
-
-11. visualState point:
-
-* marker uses annotation.position.
-* still page-bound.
-
-12. Export/save:
-
-* React marker not included in PDF.
-
-Report after implementation:
-
-1. Which coordinate path was causing viewport-fixed marker.
-2. Where clientPosition was incorrectly used as marker source, if found.
-3. How marker source is now forced to pageRect/page coordinate.
-4. Where pageRectToOverlayRect is used.
-5. Confirmation that persisted avatar marker no longer accepts clientPosition/overlayPosition as source.
+Please implement frontend changes only.

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ActivityLogTable } from '../../features/activity/components/ActivityLogTable'
-import { ActivityPagination } from '../../features/activity/components/ActivityPagination'
 import { ActivityToolbar } from '../../features/activity/components/ActivityToolbar'
 import { DEFAULT_ACTIVITY_LIMIT } from '../../features/activity/constants/activity.constants'
 import { useWorkspaceActivityActors } from '../../features/activity/hooks/useWorkspaceActivityActor'
@@ -10,6 +9,7 @@ import type {
   ActivityActionType,
   ActivityDateRange,
 } from '../../features/activity/types/activity.type'
+import { Pagination } from '../../shared/components/Pagination'
 
 export function WorkspaceActivityPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -76,7 +76,7 @@ export function WorkspaceActivityPage() {
         isError={logsQuery.isError}
       />
 
-      <ActivityPagination
+      <Pagination
         meta={logsQuery.data?.meta}
         disabled={logsQuery.isFetching}
         onPageChange={setPage}
