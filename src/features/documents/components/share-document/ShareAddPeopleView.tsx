@@ -8,6 +8,7 @@ import { useShareDocumentAccess } from '../../hooks/useSharedDocumentAccess'
 import { ShareRoleSelect } from './ShareRoleSelect'
 import { ShareUserSearchDropdown } from './ShareUserSearchDropDown'
 import { ShareSelectedUserPill } from './ShareSelectedUserPill'
+import { useDebouncedValue } from '../../../search/hooks/useDebouncedValue'
 
 interface Props {
   workspaceId: string
@@ -23,8 +24,14 @@ export function ShareAddPeopleBar({ workspaceId, documentId }: Props) {
   const [role, setRole] = useState<ShareRole>('viewer')
   const [selectedUsers, setSelectedUsers] = useState<SearchDocumentUserResult[]>([])
 
+  const debouncedQuery = useDebouncedValue(query, 300)
   const trimmedQuery = query.trim()
-  const searchQuery = useSearchDocumentUsers(workspaceId, documentId, trimmedQuery)
+  const debouncedTrimmedQuery = debouncedQuery.trim()
+  const searchQuery = useSearchDocumentUsers(
+    workspaceId,
+    documentId,
+    debouncedTrimmedQuery,
+  )
   const shareMutation = useShareDocumentAccess(workspaceId, documentId)
 
   const selectedEmails = useMemo(
@@ -33,10 +40,10 @@ export function ShareAddPeopleBar({ workspaceId, documentId }: Props) {
   )
 
   const fallbackUnregistered: SearchDocumentUserResult[] =
-    isValidEmail(trimmedQuery) && !searchQuery.data?.results.length
+    isValidEmail(debouncedTrimmedQuery) && !searchQuery.data?.results.length
       ? [
           {
-            email: trimmedQuery.toLowerCase(),
+            email: debouncedTrimmedQuery.toLowerCase(),
             isRegistered: false,
             isWorkspaceMember: false,
             isOwner: false,
