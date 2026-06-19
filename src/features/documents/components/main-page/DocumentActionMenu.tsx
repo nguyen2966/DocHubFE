@@ -1,4 +1,4 @@
-import { DotsThreeVertical, LinkSimple, PencilSimple } from '@phosphor-icons/react';
+import { DotsThreeVertical, LinkSimple, PencilSimple, X } from '@phosphor-icons/react';
 import { FileOutput, Trash } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -11,7 +11,6 @@ import {
   canRenameDocument,
 } from '../../utils/documents.permission.util';;
 import { RenameModal } from './RenameModal';
-import { ConfirmModal } from '../../../../shared/components/ui/ConfirmModal';
 import { errorToast, successDeleteToast, successToast } from '../../../../shared/components/ui/Toast';
 
 interface DocumentActionMenuProps {
@@ -146,22 +145,57 @@ export function DocumentActionMenu({
         onSubmit={handleRename}
       />
 
-      <ConfirmModal
-        open={openDeleteModal}
-        loading={deleteDocument.isPending}
-        title="Delete document?"
-        description={`This will permanently delete "${document.title}". This action cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        confirmButtonClassName="bg-red-50 text-red-600 hover:bg-red-100"
-        icon={
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 text-red-500">
-            <Trash size={20} />
+      {openDeleteModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-[380px] rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div className="flex gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500">
+                  <Trash size={18} />
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-stone-950">
+                    Delete document?
+                  </h3>
+                  <p className="mt-1 text-xs leading-relaxed text-stone-500">
+                    This will permanently delete "{document.title}". This
+                    action cannot be undone.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setOpenDeleteModal(false)}
+                className="rounded-md p-1 text-stone-400 hover:bg-stone-100"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={deleteDocument.isPending}
+                onClick={() => setOpenDeleteModal(false)}
+                className="rounded-lg px-3 py-2 text-sm text-stone-600 hover:bg-stone-100 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={deleteDocument.isPending}
+                onClick={handleDelete}
+                className="rounded-lg bg-red-500 px-3 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-300"
+              >
+                Delete
+              </button>
+            </div>
           </div>
-        }
-        onClose={() => setOpenDeleteModal(false)}
-        onConfirm={handleDelete}
-      />
+        </div>
+      )}
     </>
   )
 }
