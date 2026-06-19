@@ -152,9 +152,8 @@ export function UploadProgressCard({
   return (
     <div className="fixed bottom-6 right-6 z-50 w-[420px] rounded-xl border border-stone-200 bg-white p-4 shadow-xl">
       <div className="flex items-start gap-3">
-        <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg border border-stone-200 bg-stone-50 text-[10px] font-bold text-stone-950">
-          <FilePdf size={20} />
-          PDF
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-stone-50 text-stone-950">
+          <FilePdf size={28} weight="duotone" />
         </div>
 
         <div className="min-w-0 flex-1">

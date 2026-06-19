@@ -133,6 +133,14 @@ export function useUploadPdfWithProgress(workspaceId: string) {
     abortControllerRef.current = null;
   }, [workspaceId]);
 
+  const reset = useCallback(() => {
+    socketRef.current?.disconnect();
+    socketRef.current = null;
+    setJob(null);
+    jobIdRef.current = null;
+    abortControllerRef.current = null;
+  }, []);
+
   // ── Reset khi COMPLETED hoặc FAILED sau vài giây ──────────────────────────
   useEffect(() => {
     if (job?.status !== 'COMPLETED' && job?.status !== 'FAILED') return;
@@ -145,5 +153,5 @@ export function useUploadPdfWithProgress(workspaceId: string) {
     return () => window.clearTimeout(timer);
   }, [job?.status]);
 
-  return { upload, cancel, job };
+  return { upload, cancel, reset, job };
 }

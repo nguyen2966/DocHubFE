@@ -27,8 +27,12 @@ export function WorkspaceDocumentsPage() {
   const meta = documentsQuery.data?.meta
 
   const createDocumentMutation = useCreateMarkdownDocument(workspaceId!)
-  const { upload: uploadPdfMutation, cancel: cancelUpload, job: uploadJob } =
-    useUploadPdfWithProgress(workspaceId!)
+  const {
+    upload: uploadPdfMutation,
+    cancel: cancelUpload,
+    reset: resetUpload,
+    job: uploadJob,
+  } = useUploadPdfWithProgress(workspaceId!)
 
   const openPdfFileSelector = () => {
     fileInputRef.current?.click()
@@ -41,11 +45,13 @@ export function WorkspaceDocumentsPage() {
     if (!file || !workspaceId) return
 
     if (file.type !== 'application/pdf') {
+      setSelectedFile(file)
       setLocalError('Only PDF files are supported.')
       return
     }
 
     if (file.size > 20 * 1024 * 1024) {
+      setSelectedFile(file)
       setLocalError('PDF file must be less than 20MB.')
       return
     }
@@ -63,6 +69,14 @@ export function WorkspaceDocumentsPage() {
     await cancelUpload()
     setSelectedFile(null)
     setLocalError(null)
+    fileInputRef.current && (fileInputRef.current.value = '')
+  }
+
+  const handleCloseUploadCard = () => {
+    setSelectedFile(null)
+    setLocalError(null)
+    resetUpload()
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const handleCreateDocument = (title: string, content: string) => {
@@ -128,39 +142,26 @@ export function WorkspaceDocumentsPage() {
         onCreate={handleCreateDocument}
       />
 
-      {localError && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-xl border border-red-200 bg-white px-4 py-3 text-sm text-red-500 shadow-xl">
-          {localError}
-          <button
-            className="ml-3 text-stone-400 hover:text-stone-600"
-            onClick={() => setLocalError(null)}
-          >
-            x
-          </button>
-        </div>
-      )}
-
-      {uploadJob && selectedFile && (
+      {selectedFile && (uploadJob || localError) && (
         <UploadProgressCard
           fileName={selectedFile.name}
           fileSize={selectedFile.size}
-          progress={uploadJob.progress}
-          status={uploadJob.status}
+          progress={localError ? 0 : uploadJob?.progress ?? 0}
+          status={localError ? 'FAILED' : uploadJob?.status ?? 'FAILED'}
           loading={
-            uploadJob.status !== 'COMPLETED' &&
-            uploadJob.status !== 'FAILED' &&
-            uploadJob.status !== 'CANCELLED'
+            !localError &&
+            uploadJob?.status !== 'COMPLETED' &&
+            uploadJob?.status !== 'FAILED' &&
+            uploadJob?.status !== 'CANCELLED'
           }
           error={
-            uploadJob.status === 'FAILED'
+            localError ??
+            (uploadJob?.status === 'FAILED'
               ? 'Upload failed. Please try again.'
-              : null
+              : null)
           }
           onCancel={handleCancel}
-          onClose={() => {
-            setSelectedFile(null)
-            setLocalError(null)
-          }}
+          onClose={handleCloseUploadCard}
           onView={handleViewUploadedDocument}
         />
       )}
