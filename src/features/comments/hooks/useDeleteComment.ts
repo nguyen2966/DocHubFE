@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { commentService } from '../service/comment.service'
 import type { DeleteCommentVariables } from '../types/comment.type'
 import { commentThreadKeys } from './comment-query-keys'
+import { errorToast, successDeleteToast } from '../../../shared/components/ui/Toast'
 
 export function useDeleteComment() {
   const queryClient = useQueryClient()
@@ -18,6 +19,11 @@ export function useDeleteComment() {
           variables.documentId,
         ),
       })
+      successDeleteToast('Comment deleted successfully')
+    },
+
+    onError: () => {
+      errorToast('Failed to delete comment')
     },
   })
 }

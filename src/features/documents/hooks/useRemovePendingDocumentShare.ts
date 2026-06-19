@@ -1,6 +1,7 @@
 // useRemovePendingDocumentShare.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { documentService } from '../service/document.service'
+import { errorToast, successDeleteToast } from '../../../shared/components/ui/Toast'
 
 export function useRemovePendingDocumentShare(workspaceId: string, documentId: string) {
   const queryClient = useQueryClient()
@@ -10,6 +11,10 @@ export function useRemovePendingDocumentShare(workspaceId: string, documentId: s
       documentService.removePendingDocumentShare(workspaceId, documentId, shareId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['document-access', workspaceId, documentId] })
+      successDeleteToast('Pending share removed successfully')
+    },
+    onError: () => {
+      errorToast('Failed to remove pending share')
     },
   })
 }

@@ -1,4 +1,5 @@
-import { DotsThreeVertical, FileArrowUp, Link, PencilSimple, Trash } from '@phosphor-icons/react';
+import { DotsThreeVertical, LinkSimple, PencilSimple } from '@phosphor-icons/react';
+import { FileOutput, Trash } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Document } from '../../types/document.type';
@@ -11,7 +12,7 @@ import {
 } from '../../utils/documents.permission.util';;
 import { RenameModal } from './RenameModal';
 import { ConfirmModal } from '../../../../shared/components/ui/ConfirmModal';
-import { successDeleteToast, successToast } from '../../../../shared/components/ui/Toast';
+import { errorToast, successDeleteToast, successToast } from '../../../../shared/components/ui/Toast';
 
 interface DocumentActionMenuProps {
   workspaceId: string
@@ -61,6 +62,9 @@ export function DocumentActionMenu({
         setOpenMenu(false);
         successDeleteToast("Document removed successfully");
       },
+      onError: () => {
+        errorToast('Failed to delete document');
+      },
     })
   }
 
@@ -81,7 +85,7 @@ export function DocumentActionMenu({
             onClick={handleOpenFile}
             className="flex w-full items-center gap-2 px-4 py-2 text-sm text-stone-900 hover:bg-stone-50"
           >
-            <FileArrowUp size={16} />
+            <FileOutput size={16} />
             Open file
           </button>
 
@@ -108,7 +112,7 @@ export function DocumentActionMenu({
               }}
               className="flex w-full items-center gap-2 px-4 py-2 text-sm text-stone-900 hover:bg-stone-50"
             >
-              <Link size={16} />
+              <LinkSimple size={16} />
               Share
             </button>
           )}
@@ -149,8 +153,12 @@ export function DocumentActionMenu({
         description={`This will permanently delete "${document.title}". This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
-        confirmButtonClassName="bg-red-500 text-white hover:bg-red-600"
-        icon={<Trash size={22} className="text-red-500" />}
+        confirmButtonClassName="bg-red-50 text-red-600 hover:bg-red-100"
+        icon={
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 text-red-500">
+            <Trash size={20} />
+          </div>
+        }
         onClose={() => setOpenDeleteModal(false)}
         onConfirm={handleDelete}
       />
