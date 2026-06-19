@@ -12,8 +12,8 @@ export function getShareRoleLabel(role: ShareRole) {
 
 export function getShareRoleDescription(role: ShareRole) {
   return {
-    viewer: 'Can view this document.',
-    commenter: 'Can view and comment.',
-    editor: 'Can view, comment, and edit.',
+    viewer: 'Can view',
+    commenter: 'Can view and comment',
+    editor: 'Can view, comment and edit',
   }[role]
 }

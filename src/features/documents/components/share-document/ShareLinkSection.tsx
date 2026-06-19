@@ -12,10 +12,10 @@ export function ShareLinkSection({ workspaceId, documentId }: Props) {
   }
 
   return (
-    <div className="flex items-center justify-between border-t border-stone-200 px-8 py-5">
+    <div className="flex items-center justify-between border-t border-stone-200 px-4 py-3">
       <div>
-        <p className="text-lg font-semibold text-stone-950">Share link</p>
-        <p className="mt-1 text-base text-stone-500">
+        <p className="text-sm font-semibold text-stone-950">Share link</p>
+        <p className="mt-1 text-sm text-stone-500">
           Only people with access can open this link.
         </p>
       </div>
@@ -23,7 +23,7 @@ export function ShareLinkSection({ workspaceId, documentId }: Props) {
       <button
         type="button"
         onClick={handleCopy}
-        className="rounded-xl border border-stone-200 bg-white px-4 py-2 text-base font-medium text-stone-950 hover:bg-stone-50"
+        className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-950 hover:bg-stone-50"
       >
         Copy link
       </button>

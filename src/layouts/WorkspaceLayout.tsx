@@ -1,12 +1,17 @@
-import { Outlet, useParams } from 'react-router-dom'
+import { Navigate, Outlet, useParams } from 'react-router-dom'
 import { Header } from '../shared/components/Header'
 import { useWorkspaceDetail } from '../features/workspaces/hooks/useWorkspaceDetail'
 import { WorkspaceSidebar } from '../shared/components/SideBar'
 
 export function WorkspaceLayout() {
   const { workspaceId } = useParams();
-  const { workspace } = useWorkspaceDetail(workspaceId);
+  const { workspace, isLoading, error, status } = useWorkspaceDetail(workspaceId);
   const permissions = workspace?.currentUserAccess?.permissions ?? [];
+
+  if (isLoading) return null
+  if (status === 401) return <Navigate to="/401" replace />
+  if (status === 400 || status === 404) return <Navigate to="/404" replace />
+  if (error) return <Navigate to="/403" replace />
 
   return (
     <div className="min-h-screen bg-white flex flex-col">

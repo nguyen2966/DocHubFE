@@ -1,7 +1,8 @@
 
 
 import { useMemo, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Navigate, useParams } from 'react-router-dom'
+import { isAxiosError } from 'axios'
 
 import { CommentComposer } from '../../features/comments/components/CommentComposer'
 import { CommentPanel } from '../../features/comments/components/CommentPanel'
@@ -109,10 +110,15 @@ export function WorkspaceDocumentDetailPage() {
     data: document,
     isLoading,
     isError,
+    error: documentError,
   } = useDocumentDetail(workspaceId, documentId)
 
   const { data: commentThreads = [], isLoading: isLoadingComments } =
-    useCommentThreads(workspaceId, documentId, Boolean(workspaceId && documentId))
+    useCommentThreads(
+      workspaceId,
+      documentId,
+      Boolean(workspaceId && documentId && document),
+    )
 
   const [isPdfEditing, setIsPdfEditing] = useState(false)
 
@@ -371,6 +377,18 @@ export function WorkspaceDocumentDetailPage() {
 
   if (isLoading) {
     return <div className="text-sm text-stone-500">Loading document...</div>
+  }
+
+  if (
+    isAxiosError(documentError) &&
+    (documentError.response?.status === 400 ||
+      documentError.response?.status === 404 ||
+      [400, 404].includes(
+        (documentError.response?.data as { statusCode?: number } | undefined)
+          ?.statusCode ?? 0,
+      ))
+  ) {
+    return <Navigate to="/404" replace />
   }
 
   if (isError || !document || !workspaceId || !documentId) {

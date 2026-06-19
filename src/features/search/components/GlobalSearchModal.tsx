@@ -56,9 +56,13 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
 
   const handleSelectItem = useCallback(
     (item: SearchDocumentItem) => {
-      navigate(
-        `/workspaces/${item.workspace.workspaceId}/documents/${item.documentId}`,
-      )
+      if (item.accessType === 'direct') {
+        navigate(`/shared-with-me/documents/${item.documentId}`)
+      } else {
+        navigate(
+          `/workspaces/${item.workspace.workspaceId}/documents/${item.documentId}`,
+        )
+      }
       onClose()
     },
     [navigate, onClose],
