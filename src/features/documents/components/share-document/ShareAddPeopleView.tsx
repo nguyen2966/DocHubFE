@@ -80,13 +80,13 @@ export function ShareAddPeopleBar({ workspaceId, documentId }: Props) {
 
   return (
     <div className="relative">
-      <p className="mb-3 text-lg font-semibold text-stone-900">
+      <p className="mb-2 text-sm font-semibold text-stone-900">
         Add people by email
       </p>
 
-      <div className="flex gap-3">
+      <div className="flex gap-2">
         <div className="relative flex-1">
-          <div className="flex min-h-[48px] items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 shadow-sm focus-within:border-stone-400">
+          <div className="flex min-h-10 items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 shadow-sm focus-within:border-stone-400">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
               {selectedUsers.map((user) => (
                 <ShareSelectedUserPill
@@ -106,7 +106,7 @@ export function ShareAddPeopleBar({ workspaceId, documentId }: Props) {
                 placeholder={
                   selectedUsers.length ? '' : 'Enter email addresses...'
                 }
-                className="min-w-[160px] flex-1 border-none bg-transparent text-base text-stone-900 outline-none placeholder:text-stone-400"
+                className="min-w-[150px] flex-1 border-none bg-transparent text-sm text-stone-900 outline-none placeholder:text-stone-400"
               />
             </div>
 
@@ -127,7 +127,7 @@ export function ShareAddPeopleBar({ workspaceId, documentId }: Props) {
           type="button"
           onClick={handleAdd}
           disabled={!selectedUsers.length || shareMutation.isPending}
-          className="h-12 rounded-xl bg-stone-950 px-5 text-base font-semibold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-10 rounded-lg bg-stone-950 px-4 text-sm font-semibold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {shareMutation.isPending ? 'Adding...' : 'Add'}
         </button>

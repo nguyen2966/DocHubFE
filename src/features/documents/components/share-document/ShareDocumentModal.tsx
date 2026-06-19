@@ -29,16 +29,16 @@ export function ShareDocumentModal({
 
   return (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-    <div className="relative w-full max-w-[550px] rounded-lg border border-stone-200 bg-white shadow-xl">
+    <div className="relative flex max-h-[calc(100vh-3rem)] w-full max-w-[550px] flex-col rounded-lg border border-stone-200 bg-white shadow-xl">
       <button
         type="button"
         onClick={onClose}
-        className="absolute right-4 top-4 rounded-full p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-900"
+        className="absolute right-3 top-3 rounded-full p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-900"
       >
         <X size={16} />
       </button>
 
-      <div className="px-4 pt-4 pb-3">
+      <div className="min-h-0 px-4 pt-4 pb-2">
         <h2 className="pr-8 text-base font-normal text-stone-950">
           Share{' '}
           <span className="font-semibold">
@@ -46,15 +46,15 @@ export function ShareDocumentModal({
           </span>
         </h2>
 
-        <div className="mt-5">
+        <div className="mt-4">
           <ShareAddPeopleBar
             workspaceId={workspaceId}
             documentId={documentId}
           />
         </div>
 
-        <div className="mt-4">
-          <h3 className="mb-3 text-xs font-medium text-stone-500">
+        <div className="mt-3">
+          <h3 className="mb-2 text-xs font-medium text-stone-500">
             Who has access
           </h3>
 
@@ -62,13 +62,15 @@ export function ShareDocumentModal({
             <p className="py-4 text-xs text-stone-500">Loading...</p>
           )}
 
-          {access && (
-            <ShareAccessSection
-              access={access}
-              workspaceId={workspaceId}
-              documentId={documentId}
-            />
-          )}
+          <div className="max-h-[232px] overflow-y-auto pr-1">
+            {access && (
+              <ShareAccessSection
+                access={access}
+                workspaceId={workspaceId}
+                documentId={documentId}
+              />
+            )}
+          </div>
         </div>
       </div>
 
