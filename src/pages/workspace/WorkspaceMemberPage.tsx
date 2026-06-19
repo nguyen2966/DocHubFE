@@ -6,7 +6,7 @@ import { workspaceService } from '../../features/workspaces/services/workspace.s
 import { Member, WorkspaceRole } from '../../features/workspaces/types/workspace.type'
 import Avatar from '../../assets/avatar.png';
 import { useWorkspaceDetail } from '../../features/workspaces/hooks/useWorkspaceDetail'
-import { DeleteWorkspaceModal } from '../../features/workspaces/components/DeleteWorkspaceModal'
+import { DeleteConfirmModal } from '../../shared/components/ui/DeleteConfirmModal'
 import { can } from '../../helper/can-permission'
 import { errorToast, successDeleteToast, successToast } from '../../shared/components/ui/Toast';
 import { MembersTable, MembersTableColumn, RoleCell, RemoveButton } from '../../shared/components/ui/Table';
@@ -198,9 +198,11 @@ export function WorkspaceMembersPage() {
       )}
 
       {/* Delete confirmation */}
-      <DeleteWorkspaceModal
+      <DeleteConfirmModal
         open={!!pendingRemoveId}
-        isDeleting={isDeleting}
+        loading={isDeleting}
+        title="Remove member?"
+        description="This will remove the member from this workspace and revoke their workspace access."
         onClose={() => setPendingRemoveId(null)}
         onConfirm={handleRemove}
       />
