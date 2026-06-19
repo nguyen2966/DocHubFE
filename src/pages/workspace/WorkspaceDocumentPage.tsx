@@ -38,11 +38,8 @@ export function WorkspaceDocumentsPage() {
     fileInputRef.current?.click()
   }
 
-  const handleSelectedPdf = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-
-    if (!file || !workspaceId) return
+  const handlePdfFile = (file: File) => {
+    if (!workspaceId) return
 
     if (file.type !== 'application/pdf') {
       setSelectedFile(file)
@@ -63,6 +60,15 @@ export function WorkspaceDocumentsPage() {
       file,
       title: file.name.replace(/\.pdf$/i, ''),
     })
+  }
+
+  const handleSelectedPdf = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) return
+
+    handlePdfFile(file)
   }
 
   const handleCancel = async () => {
@@ -122,6 +128,7 @@ export function WorkspaceDocumentsPage() {
         <DocumentEmptyState
           onUploadPdf={openPdfFileSelector}
           onCreateBlank={() => setCreateModalOpen(true)}
+          onDropFile={handlePdfFile}
         />
       ) : (
         <>

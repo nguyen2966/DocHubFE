@@ -1,6 +1,7 @@
 import type { AxiosProgressEvent } from 'axios';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { documentService } from '../service/document.service';
+import { errorToast, successToast } from '../../../shared/components/ui/Toast';
 
 interface UploadPdfVariables {
   file: File
@@ -24,6 +25,11 @@ export const useUploadPdfDocument = (workspaceId: string) => {
       queryClient.invalidateQueries({
         queryKey: ['documents', workspaceId],
       })
+      successToast('Document created successfully')
+    },
+
+    onError: () => {
+      errorToast('Failed to create document')
     },
   })
 }

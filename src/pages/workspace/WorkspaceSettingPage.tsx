@@ -4,10 +4,8 @@ import { Trash } from '@phosphor-icons/react';
 import { Button } from '../../shared/components/ui/Button';
 import { useWorkspaceDetail } from '../../features/workspaces/hooks/useWorkspaceDetail';
 import { workspaceService } from '../../features/workspaces/services/workspace.service';
-import { CheckCircle } from '@phosphor-icons/react';
-import { toast } from 'sonner';
 import { DeleteWorkspaceModal } from '../../features/workspaces/components/DeleteWorkspaceModal';
-import { successDeleteToast, successToast } from '../../shared/components/ui/Toast';
+import { errorToast, successDeleteToast, successToast } from '../../shared/components/ui/Toast';
 
 export function WorkspaceSettingsPage() {
   const { workspaceId } = useParams()
@@ -37,7 +35,7 @@ export function WorkspaceSettingsPage() {
 
       successDeleteToast("Delete workspace successfully");
     } catch {
-      toast.error('Failed to delete workspace')
+      errorToast('Failed to delete workspace')
     } finally {
       setIsDeleting(false);
     }

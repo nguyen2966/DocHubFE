@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { documentService } from '../service/document.service'
+import { errorToast, successDeleteToast } from '../../../shared/components/ui/Toast'
 
 interface RemoveDocumentAccessVariables {
   documentId: string
@@ -21,6 +22,12 @@ export const useRemoveDocumentAccess = (workspaceId: string) => {
       queryClient.invalidateQueries({
         queryKey: ['documents', workspaceId],
       })
+
+      successDeleteToast('Document access removed successfully')
+    },
+
+    onError: () => {
+      errorToast('Failed to remove document access')
     },
   })
 }

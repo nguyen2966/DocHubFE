@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { commentService } from '../service/comment.service'
 import type { CreateCommentReplyVariables } from '../types/comment.type'
 import { commentThreadKeys } from './comment-query-keys'
+import { errorToast, successToast } from '../../../shared/components/ui/Toast'
 
 export function useCreateCommentReply() {
   const queryClient = useQueryClient()
@@ -28,6 +29,11 @@ export function useCreateCommentReply() {
           variables.documentId,
         ),
       })
+      successToast('Reply created successfully')
+    },
+
+    onError: () => {
+      errorToast('Failed to create reply')
     },
   })
 }

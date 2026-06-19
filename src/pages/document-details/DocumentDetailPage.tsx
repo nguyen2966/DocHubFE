@@ -2,7 +2,6 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { toast } from 'sonner'
 
 import { CommentComposer } from '../../features/comments/components/CommentComposer'
 import { CommentPanel } from '../../features/comments/components/CommentPanel'
@@ -291,7 +290,6 @@ export function WorkspaceDocumentDetailPage() {
         setSelectedThreadId(createdAnnotationId)
       }
     } catch (error) {
-      toast.error('Failed to create comment')
       throw error
     }
   }
