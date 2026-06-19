@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { GuestRoute } from './shared/components/routes/GuestRoute';
 import { ProtectedRoute } from './shared/components/routes/ProtectedRoute';
 
@@ -16,6 +16,7 @@ import { WorkspaceActivityPage } from './pages/workspace/WorkspaceActivityPage';
 import { WorkspaceSettingsPage } from './pages/workspace/WorkspaceSettingPage';
 import { AcceptInvitationPage } from './layouts/AcceptInvitationPage';
 import { ForrbiddenPage } from './pages/error/ForbiddenPage';
+import { UnAuthorizedPage } from './pages/error/UnAuthorizedPage';
 import { RequireWorkspacePermission } from './shared/components/routes/RequiredRoleRoute';
 import { Toaster } from 'sonner';
 import { NotfoundPage } from './pages/error/NotfoundPage';
@@ -46,7 +47,14 @@ function App() {
           <Route index element={<WorkspaceListPage />} />
 
           <Route path="/workspaces/:workspaceId" element={<WorkspaceLayout />}>
-            <Route path="documents" element={<WorkspaceDocumentsPage />} />
+            <Route
+              path="documents"
+              element={
+                <RequireWorkspacePermission permission="workspace:view">
+                  <WorkspaceDocumentsPage />
+                </RequireWorkspacePermission>
+              }
+            />
 
             <Route
               path="members"
@@ -95,10 +103,11 @@ function App() {
 
         <Route path="/__dev/comment-ui" element={<CommentUiTestPage />} />
 
+        <Route path="/401" element={<UnAuthorizedPage />} />
         <Route path="/403" element={<ForrbiddenPage />} />
         <Route path="/404" element={<NotfoundPage />} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotfoundPage />} />
       </Routes>
     </BrowserRouter>
   )

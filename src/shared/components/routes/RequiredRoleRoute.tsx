@@ -7,9 +7,11 @@ export function RequireWorkspacePermission({
   children,
 }: Omit<Props, 'workspaceId'>) {
   const { workspaceId } = useParams();
-  const { workspace, isLoading, error } = useWorkspaceDetail(workspaceId);
+  const { workspace, isLoading, error, status } = useWorkspaceDetail(workspaceId);
 
   if (isLoading) return null
+  if (status === 401) return <Navigate to="/401" replace />
+  if (status === 400 || status === 404) return <Navigate to="/404" replace />
   if (error) return <Navigate to="/403" replace />
 
   const permissions = workspace?.currentUserAccess?.permissions ?? [];

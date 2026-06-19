@@ -35,7 +35,7 @@ export function useLogin() {
         }
       }
 
-      navigate('/dashboard', { replace: true })
+      navigate('/', { replace: true })
     } catch (error: any) {
       const status = error.response?.status
       if (status === 401) setServerError('Incorrect email or password. Please try again.')

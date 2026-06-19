@@ -20,7 +20,7 @@ export function ProtectedRoute() {
   if (!user) {
     return (
       <Navigate
-        to="/login"
+        to="/401"
         replace
         state={{ from: location.pathname }}
       />
