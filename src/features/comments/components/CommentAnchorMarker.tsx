@@ -9,6 +9,7 @@ interface CommentAnchorMarkerProps {
   active?: boolean
   onClick: (thread: CommentThread, markerElement: HTMLElement) => void
   onHover?: (thread: CommentThread, markerElement: HTMLElement) => void
+  onHoverEnd?: (thread: CommentThread) => void
   onElementChange?: (
     thread: CommentThread,
     markerElement: HTMLElement | null,
@@ -21,6 +22,7 @@ export function CommentAnchorMarker({
   active,
   onClick,
   onHover,
+  onHoverEnd,
   onElementChange,
 }: CommentAnchorMarkerProps) {
   const markerRef = useRef<HTMLButtonElement | null>(null)
@@ -51,6 +53,9 @@ export function CommentAnchorMarker({
       onMouseDown={(event) => event.preventDefault()}
       onMouseEnter={(event) => {
         onHover?.(thread, event.currentTarget)
+      }}
+      onMouseLeave={() => {
+        onHoverEnd?.(thread)
       }}
       onClick={(event) => {
         event.stopPropagation()

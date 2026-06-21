@@ -11,7 +11,7 @@ import { CommentThreadCard } from './CommentThreadCard'
 interface CommentThreadPopoverProps extends CommentInteractionHandlers {
   open: boolean
   thread: CommentThread | null
-  position: { x: number; y: number } | null
+  position: { x: number; y: number; maxHeight?: number } | null
   source: FloatingThreadSource | null
   currentUserId?: string | null
   editingCommentId?: string | null
@@ -19,16 +19,22 @@ interface CommentThreadPopoverProps extends CommentInteractionHandlers {
   onClose: () => void
 }
 
-function clampPosition(position: { x: number; y: number }) {
+const POPOVER_WIDTH = 312
+const CLOSE_BUTTON_AREA_HEIGHT = 40
+const MIN_GAP = 12
+
+function clampPosition(position: { x: number; y: number; maxHeight?: number }) {
   if (typeof window === 'undefined') return position
 
-  const width = 348
-  const minGap = 12
-  const maxX = window.innerWidth - width - minGap
+  const maxX = window.innerWidth - POPOVER_WIDTH - MIN_GAP
+  const top = Math.max(MIN_GAP, position.y)
 
   return {
-    x: Math.max(minGap, Math.min(position.x, maxX)),
-    y: Math.max(minGap, position.y),
+    x: Math.max(MIN_GAP, Math.min(position.x, maxX)),
+    y: top,
+    maxHeight:
+      position.maxHeight ??
+      Math.max(180, window.innerHeight - top - MIN_GAP),
   }
 }
 
@@ -70,12 +76,13 @@ export function CommentThreadPopover({
     <div
       ref={popoverRef}
       className={`
-        fixed z-50 w-[348px]
+        fixed z-50 w-[312px]
         ${source === 'sidebar' ? 'shadow-2xl' : ''}
       `}
       style={{
         left: safePosition.x,
         top: safePosition.y,
+        maxHeight: safePosition.maxHeight,
       }}
     >
       <div className="mb-2 flex justify-end">
@@ -88,14 +95,24 @@ export function CommentThreadPopover({
         </button>
       </div>
 
-      <CommentThreadCard
-        thread={thread}
-        currentUserId={currentUserId}
-        variant="popover"
-        editingCommentId={editingCommentId}
-        replyingToCommentId={replyingToCommentId}
-        {...handlers}
-      />
+      <div
+        className="overflow-y-auto"
+        style={{
+          maxHeight: Math.max(
+            140,
+            (safePosition.maxHeight ?? 320) - CLOSE_BUTTON_AREA_HEIGHT,
+          ),
+        }}
+      >
+        <CommentThreadCard
+          thread={thread}
+          currentUserId={currentUserId}
+          variant="popover"
+          editingCommentId={editingCommentId}
+          replyingToCommentId={replyingToCommentId}
+          {...handlers}
+        />
+      </div>
     </div>
   )
 }

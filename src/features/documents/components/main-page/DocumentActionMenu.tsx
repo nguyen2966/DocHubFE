@@ -12,7 +12,7 @@ import {
 } from '../../utils/documents.permission.util';;
 import { RenameModal } from './RenameModal';
 import { DeleteConfirmModal } from '../../../../shared/components/ui/DeleteConfirmModal';
-import { errorToast, successDeleteToast, successToast } from '../../../../shared/components/ui/Toast';
+import { errorToast, successDeleteToast } from '../../../../shared/components/ui/Toast';
 
 interface DocumentActionMenuProps {
   workspaceId: string
@@ -49,7 +49,6 @@ export function DocumentActionMenu({
         onSuccess: () => {
           setOpenRenameModal(false);
           setOpenMenu(false);
-          successToast("Rename document successfully");
         },
       },
     )

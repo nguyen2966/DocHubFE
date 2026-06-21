@@ -22,6 +22,11 @@ interface DocumentViewerShellProps {
     clientPosition: { x: number; y: number },
     source?: 'marker' | 'annotation',
   ) => void
+  onCommentMarkerHover?: (
+    annotationId: string,
+    clientPosition: { x: number; y: number },
+  ) => void
+  onCommentMarkerLeave?: (annotationId: string) => void
 
   onPendingCommentAnchorCreated?: (
     anchor: PendingCommentAnchor,
@@ -39,6 +44,8 @@ export function DocumentViewerShell({
   commentsDisabled,
   showCommentAvatarMarkers,
   onCommentAnnotationClick,
+  onCommentMarkerHover,
+  onCommentMarkerLeave,
   onPendingCommentAnchorCreated,
 }: DocumentViewerShellProps) {
   if (document.processingStatus === 'processing') {
@@ -78,6 +85,8 @@ export function DocumentViewerShell({
     commentsDisabled={commentsDisabled}
     showCommentAvatarMarkers={showCommentAvatarMarkers}
     onCommentAnnotationClick={onCommentAnnotationClick}
+    onCommentMarkerHover={onCommentMarkerHover}
+    onCommentMarkerLeave={onCommentMarkerLeave}
     onPendingCommentAnchorCreated={onPendingCommentAnchorCreated}
   />
 }

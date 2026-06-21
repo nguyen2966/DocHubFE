@@ -47,6 +47,7 @@ export function CommentItem({
   const [draft, setDraft] = useState(comment.body)
   const [draftError, setDraftError] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const editFormRef = useRef<HTMLFormElement | null>(null)
 
   const deleted = isCommentDeleted(comment)
 
@@ -73,6 +74,19 @@ export function CommentItem({
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [menuOpen])
+
+  useEffect(() => {
+    if (!editing) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!editFormRef.current) return
+      if (editFormRef.current.contains(event.target as Node)) return
+      onCancelEdit?.()
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [editing, onCancelEdit])
 
   const validateDraft = (nextDraft: string) => {
     const result = commentFormSchema.safeParse({ content: nextDraft })
@@ -196,7 +210,7 @@ export function CommentItem({
             This comment has been deleted.
           </p>
         ) : editing ? (
-          <form onSubmit={handleSave} className="mt-2 space-y-2">
+          <form ref={editFormRef} onSubmit={handleSave} className="mt-2 space-y-2">
             <textarea
               value={draft}
               onChange={(event) => handleDraftChange(event.target.value)}

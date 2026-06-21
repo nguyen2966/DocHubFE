@@ -1,5 +1,5 @@
-import { PaperPlaneTilt } from '@phosphor-icons/react'
-import { FormEvent, useState } from 'react'
+import { ArrowUp } from '@phosphor-icons/react'
+import { FormEvent, useEffect, useRef, useState } from 'react'
 import { commentFormSchema } from '../schema/comment.schema'
 
 interface CommentComposerProps {
@@ -21,8 +21,22 @@ export function CommentComposer({
 }: CommentComposerProps) {
   const [body, setBody] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const rootRef = useRef<HTMLDivElement | null>(null)
   const isInline = variant === 'inline'
   const canSubmit = body.trim().length > 0 && !error && !disabled
+
+  useEffect(() => {
+    if (!onCancel) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current) return
+      if (rootRef.current.contains(event.target as Node)) return
+      onCancel()
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [onCancel])
 
   const validate = (nextBody: string) => {
     const result = commentFormSchema.safeParse({ content: nextBody })
@@ -51,20 +65,20 @@ export function CommentComposer({
   }
 
   return (
-    <div className="space-y-1">
+    <div ref={rootRef} className="space-y-1">
       <form
         onSubmit={handleSubmit}
         className={
           isInline
-            ? `flex w-[360px] max-w-[calc(100vw-32px)] items-center gap-2 rounded-xl border bg-white/95 px-2 py-1.5 shadow-xl backdrop-blur ${
+            ? `flex w-[360px] max-w-[calc(100vw-32px)] items-center gap-2 rounded-full border bg-white/95 px-2 py-1.5 shadow-md backdrop-blur transition ${
                 error
-                  ? 'border-red-500 focus-within:border-red-500'
-                  : 'border-stone-300 focus-within:border-stone-400'
+                  ? 'border-red-500 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-100'
+                  : 'border-stone-300 focus-within:border-stone-950 focus-within:ring-2 focus-within:ring-stone-100'
               }`
-            : `flex w-[280px] items-center gap-2 rounded-xl border bg-white px-2 py-1.5 shadow-xl ${
+            : `flex w-[280px] items-center gap-2 rounded-full border bg-white px-2 py-1.5 shadow-sm transition ${
                 error
-                  ? 'border-red-500 focus-within:border-red-500'
-                  : 'border-stone-300 focus-within:border-stone-400'
+                  ? 'border-red-500 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-100'
+                  : 'border-stone-300 focus-within:border-stone-950 focus-within:ring-2 focus-within:ring-stone-100'
               }`
         }
       >
@@ -102,11 +116,11 @@ export function CommentComposer({
           disabled={!canSubmit}
           className={
             isInline
-              ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-stone-950 text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-300'
-              : 'flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-950 text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-300'
+              ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-950 text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400'
+              : 'flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-950 text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400'
           }
         >
-          <PaperPlaneTilt size={15} weight="bold" />
+          <ArrowUp size={15} weight="bold" />
         </button>
       </form>
 

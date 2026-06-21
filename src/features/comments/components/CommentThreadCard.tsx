@@ -52,6 +52,7 @@ function CommentBranch({
   editingCommentId,
   replyingToCommentId,
   onSubmitReply,
+  onCancelReply,
   ...handlers
 }: CommentBranchProps) {
   const comment = node.comment
@@ -103,6 +104,7 @@ function CommentBranch({
                 <CommentReplyInput
                   autoFocus
                   onSubmit={(body) => onSubmitReply?.(comment, body, thread)}
+                  onCancel={onCancelReply}
                 />
               </div>
             </CommentTreeRow>

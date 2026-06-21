@@ -40,6 +40,11 @@ interface AprysePdfViewerProps {
     clientPosition: { x: number; y: number },
     source?: 'marker' | 'annotation',
   ) => void
+  onCommentMarkerHover?: (
+    annotationId: string,
+    clientPosition: { x: number; y: number },
+  ) => void
+  onCommentMarkerLeave?: (annotationId: string) => void
 
   onPendingCommentAnchorCreated?: (
     anchor: PendingCommentAnchor,
@@ -865,6 +870,8 @@ export const AprysePdfViewer = forwardRef<
     commentsDisabled,
     showCommentAvatarMarkers = true,
     onCommentAnnotationClick,
+    onCommentMarkerHover,
+    onCommentMarkerLeave,
     onPendingCommentAnchorCreated,
   },
   ref,
@@ -883,6 +890,8 @@ export const AprysePdfViewer = forwardRef<
   const showCommentAvatarMarkersRef = useRef(showCommentAvatarMarkers !== false)
   const isPdfEditingRef = useRef(isPdfEditing)
   const onCommentAnnotationClickRef = useRef(onCommentAnnotationClick)
+  const onCommentMarkerHoverRef = useRef(onCommentMarkerHover)
+  const onCommentMarkerLeaveRef = useRef(onCommentMarkerLeave)
   const onPendingCommentAnchorCreatedRef = useRef(
     onPendingCommentAnchorCreated,
   )
@@ -1968,10 +1977,9 @@ export const AprysePdfViewer = forwardRef<
   ) {
     const annotationId = thread.annotation._id
 
-    onCommentAnnotationClickRef.current?.(
+    onCommentMarkerHoverRef.current?.(
       annotationId,
       getMarkerClientPosition(markerElement),
-      'marker',
     )
   }
 
@@ -1991,10 +1999,9 @@ export const AprysePdfViewer = forwardRef<
 
     markerHoverTimeoutRef.current = window.setTimeout(() => {
       markerHoverTimeoutRef.current = null
-      onCommentAnnotationClickRef.current?.(
+      onCommentMarkerHoverRef.current?.(
         annotationId,
         getMarkerClientPosition(markerElement),
-        'annotation',
       )
 
       window.setTimeout(() => {
@@ -2003,6 +2010,19 @@ export const AprysePdfViewer = forwardRef<
         }
       }, 250)
     }, 100)
+  }
+
+  function handleOverlayMarkerHoverEnd(thread: CommentThread) {
+    if (markerHoverTimeoutRef.current !== null) {
+      window.clearTimeout(markerHoverTimeoutRef.current)
+      markerHoverTimeoutRef.current = null
+    }
+
+    if (lastHoveredThreadIdRef.current === thread.annotation._id) {
+      lastHoveredThreadIdRef.current = null
+    }
+
+    onCommentMarkerLeaveRef.current?.(thread.annotation._id)
   }
 
   function handleMarkerElementChange(
@@ -2091,6 +2111,14 @@ export const AprysePdfViewer = forwardRef<
   useEffect(() => {
     onCommentAnnotationClickRef.current = onCommentAnnotationClick
   }, [onCommentAnnotationClick])
+
+  useEffect(() => {
+    onCommentMarkerHoverRef.current = onCommentMarkerHover
+  }, [onCommentMarkerHover])
+
+  useEffect(() => {
+    onCommentMarkerLeaveRef.current = onCommentMarkerLeave
+  }, [onCommentMarkerLeave])
 
   useEffect(() => {
     onPendingCommentAnchorCreatedRef.current = onPendingCommentAnchorCreated
@@ -2255,10 +2283,9 @@ export const AprysePdfViewer = forwardRef<
 
               if (!threadId) return
 
-              onCommentAnnotationClickRef.current?.(
+              onCommentMarkerHoverRef.current?.(
                 threadId,
                 getAnnotationClientPosition(avatarMarker),
-                'marker',
               )
               return
             }
@@ -2615,6 +2642,7 @@ export const AprysePdfViewer = forwardRef<
             onAddComment={createPendingCommentAnchor}
             onMarkerClick={handleOverlayMarkerClick}
             onMarkerHover={handleOverlayMarkerHover}
+            onMarkerHoverEnd={handleOverlayMarkerHoverEnd}
             onMarkerElementChange={handleMarkerElementChange}
           />
         </div>
