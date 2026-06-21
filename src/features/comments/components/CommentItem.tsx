@@ -18,6 +18,7 @@ import {
 import type { CommentInteractionHandlers } from './comment-component.type'
 import { TimestampTooltip } from './TimestamptToolTip';
 import Avatar from '../../../assets/avatar.png';
+import { commentFormSchema } from '../schema/comment.schema'
 
 interface CommentItemProps extends CommentInteractionHandlers {
   thread: CommentThread
@@ -44,6 +45,7 @@ export function CommentItem({
 }: CommentItemProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [draft, setDraft] = useState(comment.body)
+  const [draftError, setDraftError] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   const deleted = isCommentDeleted(comment)
@@ -56,6 +58,7 @@ export function CommentItem({
 
   useEffect(() => {
     setDraft(comment.body)
+    setDraftError(null)
   }, [comment.body, editing])
 
   useEffect(() => {
@@ -71,11 +74,26 @@ export function CommentItem({
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [menuOpen])
 
+  const validateDraft = (nextDraft: string) => {
+    const result = commentFormSchema.safeParse({ content: nextDraft })
+    const nextError = result.success
+      ? null
+      : result.error.flatten().fieldErrors.content?.[0] ?? null
+
+    setDraftError(nextError)
+    return !nextError
+  }
+
+  const handleDraftChange = (nextDraft: string) => {
+    setDraft(nextDraft)
+    validateDraft(nextDraft)
+  }
+
   const handleSave = (event: FormEvent) => {
     event.preventDefault()
 
     const trimmed = draft.trim()
-    if (!trimmed) return
+    if (!validateDraft(draft) || !trimmed) return
 
     onSaveEdit?.(comment, trimmed, thread)
   }
@@ -181,10 +199,19 @@ export function CommentItem({
           <form onSubmit={handleSave} className="mt-2 space-y-2">
             <textarea
               value={draft}
-              onChange={(event) => setDraft(event.target.value)}
+              onChange={(event) => handleDraftChange(event.target.value)}
               rows={3}
-              className="w-full resize-none rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-800 outline-none focus:border-stone-500"
+              aria-invalid={Boolean(draftError)}
+              className={`w-full resize-none rounded-lg border px-3 py-2 text-sm text-stone-800 outline-none ${
+                draftError
+                  ? 'border-red-500 focus:border-red-500'
+                  : 'border-stone-300 focus:border-stone-500'
+              }`}
             />
+
+            {draftError && (
+              <p className="text-xs text-red-500">{draftError}</p>
+            )}
 
             <div className="flex justify-end gap-2">
               <button
@@ -197,7 +224,7 @@ export function CommentItem({
 
               <button
                 type="submit"
-                disabled={!draft.trim()}
+                disabled={!draft.trim() || Boolean(draftError)}
                 className="rounded-md bg-stone-950 px-3 py-1 text-xs font-medium text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-300"
               >
                 Save

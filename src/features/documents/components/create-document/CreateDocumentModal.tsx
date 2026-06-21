@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X } from '@phosphor-icons/react';
 
 import { MarkdownEditor } from './MarkdownEditor';
+import { createMarkdownDocumentSchema } from '../../schema/document.schema';
 
 interface Props {
   open: boolean
@@ -19,6 +20,44 @@ export function CreateDocumentModal({
 }: Props) {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  const [errors, setErrors] = useState<{
+    title?: string
+    markdownContent?: string
+  }>({})
+
+  const validate = (nextTitle: string, nextContent: string) => {
+    const result = createMarkdownDocumentSchema.safeParse({
+      title: nextTitle,
+      markdownContent: nextContent,
+    })
+
+    if (result.success) {
+      setErrors({})
+      return true
+    }
+
+    const fieldErrors = result.error.flatten().fieldErrors
+    setErrors({
+      title: fieldErrors.title?.[0],
+      markdownContent: fieldErrors.markdownContent?.[0],
+    })
+    return false
+  }
+
+  const handleTitleChange = (nextTitle: string) => {
+    setTitle(nextTitle)
+    validate(nextTitle, content)
+  }
+
+  const handleContentChange = (nextContent: string) => {
+    setContent(nextContent)
+    validate(title, nextContent)
+  }
+
+  const handleCreate = () => {
+    if (!validate(title, content)) return
+    onCreate(title.trim(), content)
+  }
 
   if (!open) return null
 
@@ -43,31 +82,49 @@ export function CreateDocumentModal({
 
             <input
               value={title}
-              maxLength={255}
-              onChange={(e) =>
-                setTitle(e.target.value)
-              }
+              onChange={(e) => handleTitleChange(e.target.value)}
               placeholder="Enter a title..."
-              className="
-                w-full rounded-lg border border-stone-200
-                px-3 py-2 outline-none
-                focus:border-stone-400
-              "
+              aria-invalid={Boolean(errors.title)}
+              className={`
+                w-full rounded-lg border px-3 py-2 outline-none
+                ${
+                  errors.title
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-stone-200 focus:border-stone-400'
+                }
+              `}
             />
 
-            <div className="mt-1 text-right text-xs text-stone-400">
-              {title.length}/255 characters
+            <div className="mt-1 flex items-start justify-between gap-3 text-xs">
+              <p className="min-h-4 text-red-500">{errors.title}</p>
+              <span
+                className={
+                  title.length > 255 ? 'text-red-500' : 'text-stone-400'
+                }
+              >
+                {title.length}/255 characters
+              </span>
             </div>
           </div>
 
           <div>
             <MarkdownEditor
               value={content}
-              onChange={setContent}
+              onChange={handleContentChange}
+              error={Boolean(errors.markdownContent)}
             />
 
-            <div className="mt-1 text-right text-xs text-stone-400">
-              {content.length}/50,000 characters
+            <div className="mt-1 flex items-start justify-between gap-3 text-xs">
+              <p className="min-h-4 text-red-500">
+                {errors.markdownContent}
+              </p>
+              <span
+                className={
+                  content.length > 50000 ? 'text-red-500' : 'text-stone-400'
+                }
+              >
+                {content.length}/50,000 characters
+              </span>
             </div>
           </div>
         </div>
@@ -84,9 +141,7 @@ export function CreateDocumentModal({
           </button>
 
           <button
-            onClick={() =>
-              onCreate(title, content)
-            }
+            onClick={handleCreate}
             className="
               rounded-lg bg-stone-900
               px-4 py-2 text-sm text-white

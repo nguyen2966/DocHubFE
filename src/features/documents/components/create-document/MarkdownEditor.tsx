@@ -15,9 +15,10 @@ import {
 interface MarkdownEditorProps {
   value: string
   onChange: (value: string) => void
+  error?: boolean
 }
 
-export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
+export function MarkdownEditor({ value, onChange, error }: MarkdownEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -43,7 +44,11 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
   if (!editor) return null
 
   return (
-    <div className="overflow-hidden rounded-xl border border-stone-200">
+    <div
+      className={`overflow-hidden rounded-xl border ${
+        error ? 'border-red-500' : 'border-stone-200'
+      }`}
+    >
       <div className="flex items-center gap-1 border-b border-stone-200 p-2">
         <ToolbarButton
           active={editor.isActive('bold')}
