@@ -1,47 +1,45 @@
 import { z } from 'zod'
 
+const documentTitleSchema = z
+  .string()
+  .trim()
+  .min(1, 'Document name is required')
+  .max(255, 'Document name must be 255 characters or fewer')
+
 export const createMarkdownDocumentSchema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(1, 'Vui lòng nhập tên tài liệu')
-    .max(100, 'Tên tài liệu tối đa 100 ký tự'),
+  title: documentTitleSchema,
 
   markdownContent: z
     .string()
-    .max(50000, 'Nội dung Markdown tối đa 50,000 ký tự'),
+    .max(50000, 'Markdown content must be 50,000 characters or fewer'),
 })
 
 export const uploadPdfDocumentSchema = z.object({
   title: z
     .string()
     .trim()
-    .max(60, 'Tên tài liệu tối đa 60 ký tự')
+    .max(255, 'Document name must be 255 characters or fewer')
     .optional(),
 
   file: z
-    .instanceof(File, { message: 'Vui lòng chọn file PDF' })
+    .instanceof(File, { message: 'Please select a PDF file' })
     .refine((file) => file.type === 'application/pdf', {
-      message: 'Chỉ hỗ trợ file PDF',
+      message: 'Only PDF files are supported',
     })
     .refine((file) => file.size <= 20 * 1024 * 1024, {
-      message: 'File PDF tối đa 20MB',
+      message: 'PDF file must be 20MB or smaller',
     }),
 })
 
 export const renameDocumentSchema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(1, 'Vui lòng nhập tên tài liệu')
-    .max(100, 'Tên tài liệu tối đa 60 ký tự'),
+  title: documentTitleSchema,
 })
 
 export const shareDocumentSchema = z.object({
-  userId: z.string().min(1, 'Vui lòng chọn người dùng'),
+  userId: z.string().min(1, 'Please select a user'),
 
   role: z.enum(['editor', 'commenter', 'viewer'], {
-    message: 'Role không hợp lệ',
+    message: 'Role is invalid',
   }),
 })
 
