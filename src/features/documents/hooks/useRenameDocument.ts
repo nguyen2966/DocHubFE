@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { documentService } from '../service/document.service'
 import type { RenameDocumentPayload } from '../types/document.type'
+import { successToast } from '../../../shared/components/ui/Toast'
 
 interface RenameDocumentVariables {
   documentId: string
@@ -23,6 +24,8 @@ export const useRenameDocument = (workspaceId: string) => {
         ['documents', workspaceId, updatedDocument._id],
         updatedDocument,
       )
+
+      successToast('Document renamed successfully')
     },
   })
 }

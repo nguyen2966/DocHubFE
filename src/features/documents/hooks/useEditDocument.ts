@@ -3,6 +3,7 @@ import { documentService } from '../service/document.service';
 import type { Document } from '../types/document.type';
 import type { EditedRect } from '../../comments/types/comment.type'
 import { commentThreadKeys } from '../../comments/hooks/comment-query-keys'
+import { successToast } from '../../../shared/components/ui/Toast'
 
 interface EditPdfPayload {
   documentId: string
@@ -41,6 +42,8 @@ export const useEditPdf = (workspaceId: string) => {
       queryClient.invalidateQueries({
         queryKey: commentThreadKeys.list(workspaceId, variables.documentId),
       })
+
+      successToast('Document edited successfully')
     },
   })
 }

@@ -1,5 +1,5 @@
-import { PaperPlaneTilt } from '@phosphor-icons/react'
-import { FormEvent, useState } from 'react'
+import { ArrowUp } from '@phosphor-icons/react'
+import { FormEvent, useEffect, useRef, useState } from 'react'
 import { commentFormSchema } from '../schema/comment.schema'
 
 interface CommentReplyInputProps {
@@ -7,6 +7,7 @@ interface CommentReplyInputProps {
   disabled?: boolean
   autoFocus?: boolean
   onSubmit: (body: string) => void
+  onCancel?: () => void
 }
 
 export function CommentReplyInput({
@@ -14,9 +15,24 @@ export function CommentReplyInput({
   disabled,
   autoFocus,
   onSubmit,
+  onCancel,
 }: CommentReplyInputProps) {
   const [body, setBody] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!onCancel) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current) return
+      if (rootRef.current.contains(event.target as Node)) return
+      onCancel()
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [onCancel])
 
   const validate = (nextBody: string) => {
     const result = commentFormSchema.safeParse({ content: nextBody })
@@ -47,13 +63,13 @@ export function CommentReplyInput({
   }
 
   return (
-    <div className="space-y-1">
+    <div ref={rootRef} className="space-y-1">
       <form
         onSubmit={handleSubmit}
-        className={`flex items-center gap-2 rounded-xl border bg-white px-2 py-1 shadow-sm ${
+        className={`flex items-center gap-2 rounded-full border bg-white px-2 py-1 shadow-sm transition ${
           error
-            ? 'border-red-500 focus-within:border-red-500'
-            : 'border-stone-300 focus-within:border-stone-400'
+            ? 'border-red-500 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-100'
+            : 'border-stone-300 focus-within:border-stone-950 focus-within:ring-2 focus-within:ring-stone-100'
         }`}
       >
         <input
@@ -69,9 +85,9 @@ export function CommentReplyInput({
         <button
           type="submit"
           disabled={!canSubmit}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-950 text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-300"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-950 text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
         >
-          <PaperPlaneTilt size={15} weight="bold" />
+          <ArrowUp size={15} weight="bold" />
         </button>
       </form>
 

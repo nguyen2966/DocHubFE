@@ -6,6 +6,7 @@ import { isAxiosError } from 'axios'
 
 import { CommentComposer } from '../../features/comments/components/CommentComposer'
 import { CommentPanel } from '../../features/comments/components/CommentPanel'
+import { CommentThreadPreviewPopover } from '../../features/comments/components/CommentThreadPreviewPopover'
 import { CommentThreadPopover } from '../../features/comments/components/CommentThreadPopover'
 import { DeleteThreadConfirmModal } from '../../features/comments/components/DeleteThreadConfirmModal'
 import { DeleteCommentConfirmModal } from '../../features/comments/components/DeleteCommentConfirmModal'
@@ -35,6 +36,8 @@ import { useAuthStore } from '../../shared/hooks/useAuthStore'
 
 type FloatingThreadSource = 'anchor' | 'sidebar'
 
+const FULL_THREAD_POPOVER_WIDTH = 312
+
 type PendingDelete =
   | {
     type: 'comment'
@@ -59,14 +62,17 @@ function getViewerLeftPopoverPosition(viewerElement: HTMLElement | null) {
     return {
       x: 24,
       y: 160,
+      maxHeight: Math.max(180, window.innerHeight - 172),
     }
   }
 
   const rect = viewerElement.getBoundingClientRect()
+  const top = rect.top + 16
 
   return {
-    x: rect.left + 24,
-    y: rect.top + 140,
+    x: rect.left + 12,
+    y: top,
+    maxHeight: Math.max(180, rect.bottom - top - 12),
   }
 }
 
@@ -82,6 +88,48 @@ function getAnchorPopoverPosition(position: { x: number; y: number }) {
   return {
     x: Math.min(Math.max(margin, position.x + 24), maxX),
     y: Math.min(Math.max(margin, position.y - 16), maxY),
+  }
+}
+
+function getMarkerPreviewPosition(position: { x: number; y: number }) {
+  const width = 300
+  const estimatedHeight = 126
+  const margin = 12
+  const viewportWidth = window.innerWidth || width + margin * 2
+  const viewportHeight = window.innerHeight || estimatedHeight + margin * 2
+  const maxX = Math.max(margin, viewportWidth - width - margin)
+  const maxY = Math.max(margin, viewportHeight - estimatedHeight - margin)
+
+  return {
+    x: Math.min(Math.max(margin, position.x + 12), maxX),
+    y: Math.min(Math.max(margin, position.y - 24), maxY),
+  }
+}
+
+function getViewerRightPopoverPosition(
+  viewerElement: HTMLElement | null,
+  anchorPosition?: { x: number; y: number } | null,
+) {
+  if (!viewerElement) {
+    const top = Math.max(12, (anchorPosition?.y ?? 160) - 80)
+
+    return {
+      x: Math.max(12, window.innerWidth - FULL_THREAD_POPOVER_WIDTH - 24),
+      y: top,
+      maxHeight: Math.max(180, window.innerHeight - top - 12),
+    }
+  }
+
+  const rect = viewerElement.getBoundingClientRect()
+  const minTop = rect.top + 12
+  const maxTop = Math.max(minTop, rect.bottom - 180)
+  const preferredTop = anchorPosition ? anchorPosition.y - 96 : rect.top + 16
+  const top = Math.min(Math.max(preferredTop, minTop), maxTop)
+
+  return {
+    x: Math.max(rect.left + 12, rect.right - FULL_THREAD_POPOVER_WIDTH - 12),
+    y: top,
+    maxHeight: Math.max(180, rect.bottom - top - 12),
   }
 }
 
@@ -132,9 +180,15 @@ export function WorkspaceDocumentDetailPage() {
   const [floatingThreadPosition, setFloatingThreadPosition] = useState<{
     x: number
     y: number
+    maxHeight?: number
   } | null>(null)
   const [floatingThreadSource, setFloatingThreadSource] =
     useState<FloatingThreadSource | null>(null)
+  const [hoverPreview, setHoverPreview] = useState<{
+    thread: CommentThread
+    position: { x: number; y: number }
+  } | null>(null)
+  const hoverPreviewCloseTimeoutRef = useRef<number | null>(null)
 
   const [pendingCommentAnchor, setPendingCommentAnchor] =
     useState<PendingCommentAnchor | null>(null)
@@ -174,8 +228,74 @@ export function WorkspaceDocumentDetailPage() {
     setEditingCommentId(null)
   }
 
+  const cancelHoverPreviewClose = () => {
+    if (hoverPreviewCloseTimeoutRef.current === null) return
+
+    window.clearTimeout(hoverPreviewCloseTimeoutRef.current)
+    hoverPreviewCloseTimeoutRef.current = null
+  }
+
+  const closeHoverPreview = () => {
+    cancelHoverPreviewClose()
+    setHoverPreview(null)
+  }
+
+  const scheduleHoverPreviewClose = (annotationId?: string) => {
+    cancelHoverPreviewClose()
+
+    hoverPreviewCloseTimeoutRef.current = window.setTimeout(() => {
+      hoverPreviewCloseTimeoutRef.current = null
+      setHoverPreview((current) => {
+        if (annotationId && current?.thread.annotation._id !== annotationId) {
+          return current
+        }
+
+        return null
+      })
+    }, 140)
+  }
+
+  const handleCommentMarkerHover = (
+    annotationId: string,
+    clientPosition: { x: number; y: number },
+  ) => {
+    const thread = commentThreads.find(
+      (candidate) => candidate.annotation._id === annotationId,
+    )
+
+    if (!thread || commentsOpen) return
+
+    cancelHoverPreviewClose()
+    setSelectedThreadId(annotationId)
+    setHoverPreview({
+      thread,
+      position: getMarkerPreviewPosition(clientPosition),
+    })
+  }
+
+  const handleCommentMarkerLeave = (annotationId: string) => {
+    scheduleHoverPreviewClose(annotationId)
+  }
+
+  const openFullThreadFromPreview = (thread: CommentThread) => {
+    const annotationId = thread.annotation._id
+    const previewPosition = hoverPreview?.position ?? null
+
+    closeHoverPreview()
+    setSelectedThreadId(annotationId)
+    setReplyingToCommentId(null)
+    setEditingCommentId(null)
+    setHiddenAvatarMarkerId(annotationId)
+    setFloatingThreadId(annotationId)
+    setFloatingThreadSource('anchor')
+    setFloatingThreadPosition(
+      getViewerRightPopoverPosition(viewerFrameRef.current, previewPosition),
+    )
+  }
+
   const openCommentsSidebar = () => {
     setCommentsOpen(true)
+    closeHoverPreview()
 
     // Mở sidebar thì đóng mọi popup thread đang mở.
     closeThreadPopover()
@@ -236,6 +356,7 @@ export function WorkspaceDocumentDetailPage() {
     }
 
     setHiddenAvatarMarkerId(source === 'marker' ? annotationId : null)
+    closeHoverPreview()
     setFloatingThreadId(annotationId)
     setFloatingThreadSource('anchor')
     setFloatingThreadPosition(getAnchorPopoverPosition(clientPosition))
@@ -439,8 +560,24 @@ export function WorkspaceDocumentDetailPage() {
                 commentsDisabled={isPdfEditing}
                 showCommentAvatarMarkers={!commentsOpen}
                 onCommentAnnotationClick={handleDocumentAnnotationClick}
+                onCommentMarkerHover={handleCommentMarkerHover}
+                onCommentMarkerLeave={handleCommentMarkerLeave}
                 onPendingCommentAnchorCreated={handlePendingCommentAnchorCreated}
               />
+
+              {hoverPreview && (
+                <CommentThreadPreviewPopover
+                  thread={hoverPreview.thread}
+                  position={hoverPreview.position}
+                  onMouseEnter={cancelHoverPreviewClose}
+                  onMouseLeave={() =>
+                    scheduleHoverPreviewClose(
+                      hoverPreview.thread.annotation._id,
+                    )
+                  }
+                  onOpenThread={openFullThreadFromPreview}
+                />
+              )}
 
               {pendingCommentAnchor && pendingComposerPosition && (
                 <div
