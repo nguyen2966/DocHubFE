@@ -1,6 +1,6 @@
 import {
   ChatText,
-  PencilSimple,
+  NotePencil,
   ShareNetwork,
 } from '@phosphor-icons/react'
 import { useState } from 'react'
@@ -17,10 +17,8 @@ interface DocumentViewerToolbarProps {
   workspaceId: string
   document: Document
   isPdfEditing: boolean
-  isSavingPdf: boolean
   onStartEditPdf: () => void
   onCancelEditPdf: () => void
-  onSavePdf: () => void
   commentsOpen?: boolean
   onOpenComments?: () => void
 }
@@ -31,58 +29,61 @@ export function DocumentViewerToolbar({
   isPdfEditing,
   onStartEditPdf,
   onCancelEditPdf,
-  onSavePdf,
-  isSavingPdf,
   onOpenComments,
   commentsOpen,
 }: DocumentViewerToolbarProps) {
   const [shareOpen, setShareOpen] = useState(false)
+  const showEditPdf = canEditDocument(document)
+  const showComments = canCommentDocument(document)
+  const showShare = canManageDocumentAccess(document)
+  const hasFunctionalButtons = showEditPdf || showComments || showShare
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <DocumentRoleBadge document={document} />
 
-        {canEditDocument(document) && !isPdfEditing && (
+        {hasFunctionalButtons && (
+          <span className="h-8 w-px bg-stone-200" aria-hidden="true" />
+        )}
+
+        {showEditPdf && (
           <button
-            onClick={onStartEditPdf}
+            onClick={() => {
+              if (isPdfEditing) {
+                onCancelEditPdf()
+                return
+              }
+
+              onStartEditPdf()
+            }}
             type="button"
-            className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium hover:bg-stone-50"
+            aria-pressed={isPdfEditing}
+            className={`flex h-8 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition ${
+              isPdfEditing
+                ? 'border-stone-400 bg-stone-100 text-stone-900'
+                : 'border-stone-200 bg-white text-stone-800 hover:bg-stone-50'
+            }`}
           >
-            <PencilSimple size={16} />
+            <NotePencil size={16} />
             Edit PDF
           </button>
         )}
 
-        {canEditDocument(document) && isPdfEditing && (
-          <>
-            <button
-              className="rounded-lg bg-stone-900 px-3 py-2 text-sm font-medium text-white"
-              onClick={onSavePdf}
-              disabled={isSavingPdf}
-            >
-              Save
-            </button>
-
-            <button
-              onClick={onCancelEditPdf}
-              className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium"
-            >
-              Cancel
-            </button>
-          </>
-        )}
-
-        {canCommentDocument(document) && !isPdfEditing && (
+        {showComments && (
           <button
             type="button"
-            onClick={onOpenComments}
+            onClick={isPdfEditing ? undefined : onOpenComments}
+            disabled={isPdfEditing}
             className={`
-            inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition
-            ${commentsOpen
-                      ? 'border-stone-950 bg-stone-950 text-white'
-                      : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
-                    }
+            inline-flex h-8 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition
+            ${
+              isPdfEditing
+                ? 'cursor-not-allowed border-stone-200 bg-stone-100 text-stone-400'
+                : commentsOpen
+                  ? 'border-stone-950 bg-stone-100 text-stone-900'
+                  : 'border-stone-200 bg-white text-stone-800 hover:bg-stone-50'
+            }
           `}
           >
             <ChatText size={16} />
@@ -90,19 +91,17 @@ export function DocumentViewerToolbar({
           </button>
         )}
 
-        {canManageDocumentAccess(document) && (
+        {showShare && (
           <button
             type="button"
             onClick={() => setShareOpen(true)}
-            className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium hover:bg-stone-50"
+            className="flex h-8 items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium hover:bg-stone-50"
           >
             <ShareNetwork size={16} />
             Share
           </button>
         )}
       </div>
-
-    
 
       <ShareDocumentModal
         open={shareOpen}
