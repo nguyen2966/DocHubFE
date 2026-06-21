@@ -410,15 +410,20 @@ export function WorkspaceDocumentDetailPage() {
               isPdfEditing={isPdfEditing}
               onStartEditPdf={handleStartEditPdf}
               onCancelEditPdf={() => setIsPdfEditing(false)}
-              isSavingPdf={editPdfMutation.isPending}
-              onSavePdf={handleSavePdf}
               commentsOpen={commentsOpen}
               onOpenComments={openCommentsSidebar}
             />
           </div>
 
           <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-stone-200 bg-white">
-            <DocumentTitleBar workspaceId={workspaceId} document={document} />
+            <DocumentTitleBar
+              workspaceId={workspaceId}
+              document={document}
+              isPdfEditing={isPdfEditing}
+              isSavingPdf={editPdfMutation.isPending}
+              onCancelEditPdf={() => setIsPdfEditing(false)}
+              onSavePdf={handleSavePdf}
+            />
 
             <div
               ref={viewerFrameRef}
