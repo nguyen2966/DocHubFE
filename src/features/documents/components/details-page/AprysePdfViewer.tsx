@@ -4,741 +4,73 @@ import {
   useState,
   forwardRef,
   useImperativeHandle,
-} from 'react'
-import WebViewerModule from '@pdftron/webviewer'
-import type { WebViewerInstance } from '@pdftron/webviewer'
+} from 'react';
 
-import type {
-  EditedRect,
-  PendingCommentAnchor,
-} from '../../../comments/types/comment.type'
-import type { CommentThread } from '../../../comments/utils/comment-tree.util'
+import type { WebViewerInstance } from '@pdftron/webviewer';
+
+import type { EditedRect } from '../../../comments/types/comment.type';
+import type { CommentThread } from '../../../comments/utils/comment-tree.util';
 import {
   CommentAnnotationOverlayLayer,
   type CommentMarkerOverlay,
-} from '../../../comments/components/CommentAnnotationOverlayLayer'
-import { PdfPageControls } from './ControlProps'
-
-export interface EditedPdfExport {
-  file: Blob
-  editedRects: EditedRect[]
-  degradedAnnotationIds: string[]
-}
-
-interface AprysePdfViewerProps {
-  fileUrl: string
-  isPdfEditing: boolean
-
-  commentThreads?: CommentThread[]
-  selectedCommentAnnotationId?: string | null
-  hiddenCommentAvatarMarkerId?: string | null
-  commentsDisabled?: boolean
-  showCommentAvatarMarkers?: boolean
-
-  onCommentAnnotationClick?: (
-    annotationId: string,
-    clientPosition: { x: number; y: number },
-    source?: 'marker' | 'annotation',
-  ) => void
-  onCommentMarkerHover?: (
-    annotationId: string,
-    clientPosition: { x: number; y: number },
-  ) => void
-  onCommentMarkerLeave?: (annotationId: string) => void
-
-  onPendingCommentAnchorCreated?: (
-    anchor: PendingCommentAnchor,
-    clientPosition: { x: number; y: number },
-  ) => void
-}
-
-export interface AprysePdfViewerRef {
-  exportEditedPdf: () => Promise<EditedPdfExport | null>
-  reloadOriginalPdf: () => void
-
-  renderCommentThreads?: (threads: CommentThread[]) => void | Promise<void>
-  scrollToCommentAnnotation?: (annotationId: string) => void | Promise<void>
-  highlightCommentAnnotation?: (annotationId: string) => void
-  removeTemporaryCommentAnchor?: () => void
-}
-
-const WebViewer = (WebViewerModule as any).default ?? WebViewerModule
-
-type AnyAnnotation = any
-type AnyContentEditManager = any
-type AnyContentBoxEditor = any
-type AnyQuad = {
-  x1: number
-  y1: number
-  x2: number
-  y2: number
-  x3: number
-  y3: number
-  x4: number
-  y4: number
-  toRect?: () => {
-    x1?: number
-    y1?: number
-    x2?: number
-    y2?: number
-    getWidth?: () => number
-    getHeight?: () => number
-  }
-}
-
-type TextSelection = {
-  quads: AnyQuad[]
-  text: string
-  pageNumber: number
-  position: { x: number; y: number }
-}
-
-type RectLike = {
-  x1?: number
-  y1?: number
-  x2?: number
-  y2?: number
-  x?: number
-  y?: number
-  width?: number
-  height?: number
-  getX1?: () => number
-  getY1?: () => number
-  getX2?: () => number
-  getY2?: () => number
-  getWidth?: () => number
-  getHeight?: () => number
-}
-
-type ApryseWebComponentElement = HTMLElement & {
-  shadowRoot: ShadowRoot | null
-}
-
-type PagePoint = {
-  pageNumber: number
-  x: number
-  y: number
-}
-
-type AvatarMarkerSource = 'imported-highlight' | 'annotation-position'
-
-type PageBoundAvatarMarker = {
-  annotationId: string
-  thread: CommentThread
-  pageNumber: number
-  anchor: { x: number; y: number }
-  source: AvatarMarkerSource
-}
-
-type OverlayRect = {
-  left: number
-  top: number
-  width: number
-  height: number
-}
-
-type ProjectedAvatarMarker = PageBoundAvatarMarker & {
-  overlayRect: OverlayRect
-}
-
-const COMMENT_ANCHOR_TYPE = 'comment_anchor'
-const COMMENT_THREAD_ID_KEY = 'commentThreadId'
-const COMMENT_ANCHOR_TYPE_KEY = 'commentAnchorType'
-const TEMPORARY_ANCHOR_KEY = 'temporaryCommentAnchor'
-const DOC_HUB_MANAGED_KEY = 'docHubManaged'
-const DOC_HUB_KIND_KEY = 'docHubKind'
-const DOC_HUB_ANNOTATION_ID_KEY = 'docHubAnnotationId'
-const DOC_HUB_ROLE_KEY = 'docHubApryseRole'
-const DOC_HUB_KIND_COMMENT_HIGHLIGHT = 'comment-highlight'
-const DOC_HUB_KIND_AVATAR_MARKER = 'avatar-marker'
-const DOC_HUB_KIND_PENDING_COMMENT_HIGHLIGHT = 'pending-comment-highlight'
-const COMMENT_MARKER_SIZE = 36
-const COMMENT_MARKER_OVERLAY_GAP = 8
-const SELECTION_ACTION_OVERLAY_GAP = 12
-const LOCKED_PDF_ZOOM = 1.25
-const ZOOM_LOCK_ENABLED = true
-const APRYSE_ZOOM_UI_ELEMENTS = [
-  'zoomOverlayButton',
-  'zoomOverlay',
-  'zoomInButton',
-  'zoomOutButton',
-  'zoomText',
-  'zoomInput',
-  'fitModeButton',
-  'fitModeOverlayButton',
-  'fitModeDropdown',
-  'viewControlsButton',
-  'viewControlsOverlay',
-]
-
-const wait = (ms: number) =>
-  new Promise<void>((resolve) => setTimeout(resolve, ms))
-
-const waitFrame = () =>
-  new Promise<void>((resolve) => {
-    requestAnimationFrame(() => resolve())
-  })
-
-function getContentEditManager(instance: WebViewerInstance) {
-  return instance.Core.documentViewer.getContentEditManager?.() as
-    | AnyContentEditManager
-    | undefined
-}
-
-function getApryseWebComponent(viewerElement: HTMLDivElement) {
-  return viewerElement.querySelector(
-    'apryse-webviewer',
-  ) as ApryseWebComponentElement | null
-}
-
-function getApryseShadowRoot(viewerElement: HTMLDivElement) {
-  const webComponent = getApryseWebComponent(viewerElement)
-
-  return webComponent?.shadowRoot ?? null
-}
-
-function dispatchMouseLikeEvent(
-  target: Element,
-  type: string,
-  clientX: number,
-  clientY: number,
-) {
-  const win = target.ownerDocument?.defaultView ?? window
-
-  const EventConstructor =
-    type.startsWith('pointer') && 'PointerEvent' in win
-      ? win.PointerEvent
-      : win.MouseEvent
-
-  const event = new EventConstructor(type, {
-    bubbles: true,
-    cancelable: true,
-    composed: true,
-    view: win,
-    clientX,
-    clientY,
-    button: 0,
-    buttons: type === 'mouseup' || type === 'pointerup' ? 0 : 1,
-    pointerId: 1,
-    pointerType: 'mouse',
-    isPrimary: true,
-  } as MouseEventInit & PointerEventInit)
-
-  target.dispatchEvent(event)
-}
-
-function findPageAreaInShadowRoot(shadowRoot: ShadowRoot) {
-  const selectors = [
-    '[data-element="documentContainer"]',
-    '[data-element="pageContainer"]',
-    '.DocumentContainer',
-    '.documentContainer',
-    '.document-container',
-    '.PageContainer',
-    '.pageContainer',
-    '.page-container',
-    '.pageSection',
-    '.page',
-    '#app',
-  ]
-
-  for (const selector of selectors) {
-    const element = shadowRoot.querySelector(selector)
-
-    if (element) {
-      return element
-    }
-  }
-
-  return shadowRoot.querySelector('#app')
-}
-
-function findApryseScrollContainer(viewerElement: HTMLDivElement) {
-  const shadowRoot = getApryseShadowRoot(viewerElement)
-
-  if (!shadowRoot) return null
-
-  const selectors = [
-    '[data-element="documentContainer"]',
-    '.DocumentContainer',
-    '.documentContainer',
-    '.document-container',
-    '#DocumentViewer',
-    '#app',
-  ]
-
-  for (const selector of selectors) {
-    const element = shadowRoot.querySelector(selector) as HTMLElement | null
-
-    if (
-      element &&
-      (element.scrollHeight > element.clientHeight ||
-        element.scrollWidth > element.clientWidth)
-    ) {
-      return element
-    }
-  }
-
-  return null
-}
-
-async function clickInsideApryseShadowRoot(viewerElement: HTMLDivElement) {
-  const shadowRoot = getApryseShadowRoot(viewerElement)
-
-  if (!shadowRoot) {
-    console.warn('Apryse shadowRoot not found')
-    return false
-  }
-
-  const pageArea = findPageAreaInShadowRoot(shadowRoot)
-
-  if (!pageArea) {
-    console.warn('Apryse page area not found inside shadowRoot')
-    return false
-  }
-
-  const rect = pageArea.getBoundingClientRect()
-
-  const x = rect.left + 12
-  const y = rect.top + 12
-
-  const realTarget = (shadowRoot as any).elementFromPoint?.(x, y) ?? pageArea
-
-  dispatchMouseLikeEvent(realTarget, 'pointerdown', x, y)
-  dispatchMouseLikeEvent(realTarget, 'mousedown', x, y)
-  dispatchMouseLikeEvent(realTarget, 'pointerup', x, y)
-  dispatchMouseLikeEvent(realTarget, 'mouseup', x, y)
-  dispatchMouseLikeEvent(realTarget, 'click', x, y)
-
-  await waitFrame()
-  await waitFrame()
-  await wait(300)
-
-  return true
-}
-
-function isContentEditPlaceholderAnnotation(annotation: AnyAnnotation) {
-  return Boolean(
-    annotation?.isContentEditPlaceholder?.() ||
-    annotation?.isContentEditPlaceHolder?.(),
-  )
-}
-
-function getContentEditBoxId(annotation: AnyAnnotation) {
-  const contentBoxId = annotation?.getCustomData?.('contentEditBoxId') ?? null
-
-  if (!contentBoxId || typeof contentBoxId !== 'string') {
-    return null
-  }
-
-  return contentBoxId
-}
-
-function getSelectedContentEditPlaceholderAnnotation(
-  instance: WebViewerInstance,
-) {
-  const { annotationManager } = instance.Core
-
-  const selectedAnnotations =
-    annotationManager.getSelectedAnnotations?.() ?? []
-
-  return (
-    selectedAnnotations.find((annotation: AnyAnnotation) =>
-      isContentEditPlaceholderAnnotation(annotation),
-    ) ?? null
-  )
-}
-
-function getAllContentEditPlaceholderAnnotations(instance: WebViewerInstance) {
-  const { annotationManager } = instance.Core
-
-  const annotations = annotationManager.getAnnotationsList?.() ?? []
-
-  return annotations.filter((annotation: AnyAnnotation) =>
-    isContentEditPlaceholderAnnotation(annotation),
-  )
-}
-
-function collectContentEditBoxIds(instance: WebViewerInstance) {
-  const ids = new Set<string>()
-
-  const selectedPlaceholder =
-    getSelectedContentEditPlaceholderAnnotation(instance)
-
-  const selectedBoxId = getContentEditBoxId(selectedPlaceholder)
-
-  if (selectedBoxId) {
-    ids.add(selectedBoxId)
-  }
-
-  const placeholders = getAllContentEditPlaceholderAnnotations(instance)
-
-  for (const annotation of placeholders) {
-    const contentBoxId = getContentEditBoxId(annotation)
-
-    if (contentBoxId) {
-      ids.add(contentBoxId)
-    }
-  }
-
-  return Array.from(ids)
-}
-
-async function stopAllContentBoxEditing(instance: WebViewerInstance) {
-  const contentEditManager = getContentEditManager(instance)
-
-  if (!contentEditManager) {
-    console.warn('ContentEditManager is not available')
-    return
-  }
-
-  const contentBoxIds = collectContentEditBoxIds(instance)
-
-  if (contentBoxIds.length === 0) {
-    return
-  }
-
-  for (const contentBoxId of contentBoxIds) {
-    try {
-      const box = contentEditManager.getContentBoxById?.(contentBoxId)
-
-      if (!box) {
-        continue
-      }
-
-      await box.stopContentEditing?.()
-    } catch (error) {
-      console.warn(
-        'Failed to stop content editing for box:',
-        contentBoxId,
-        error,
-      )
-    }
-  }
-
-  await waitFrame()
-  await waitFrame()
-  await wait(300)
-}
-
-async function endContentEditMode(instance: WebViewerInstance) {
-  const contentEditManager = getContentEditManager(instance)
-
-  if (!contentEditManager) return
-
-  try {
-    await contentEditManager.endContentEditMode?.()
-  } catch (error) {
-    console.warn('Failed to end content edit mode:', error)
-  }
-
-  await waitFrame()
-  await waitFrame()
-  await wait(300)
-}
-
-function getQuadBounds(quads: AnyQuad[]) {
-  const xs: number[] = []
-  const ys: number[] = []
-
-  for (const quad of quads) {
-    xs.push(quad.x1, quad.x2, quad.x3, quad.x4)
-    ys.push(quad.y1, quad.y2, quad.y3, quad.y4)
-  }
-
-  return {
-    minX: Math.min(...xs),
-    minY: Math.min(...ys),
-    maxX: Math.max(...xs),
-    maxY: Math.max(...ys),
-  }
-}
-
-function getQuadCenterY(quad: AnyQuad) {
-  return (quad.y1 + quad.y2 + quad.y3 + quad.y4) / 4
-}
-
-function getQuadRightMiddle(quad: AnyQuad) {
-  const rightX = Math.max(quad.x1, quad.x2, quad.x3, quad.x4)
-
-  return {
-    x: rightX,
-    y: getQuadCenterY(quad),
-  }
-}
-
-function getTextAnchorFromQuads(quads: AnyQuad[]) {
-  if (!quads.length) return null
-
-  const lineThreshold = 4
-  const lines: Array<{ centerY: number; quads: AnyQuad[] }> = []
-
-  for (const quad of quads) {
-    const centerY = getQuadCenterY(quad)
-    const line = lines.find(
-      (item) => Math.abs(item.centerY - centerY) <= lineThreshold,
-    )
-
-    if (line) {
-      line.quads.push(quad)
-      line.centerY =
-        line.quads.reduce((sum, item) => sum + getQuadCenterY(item), 0) /
-        line.quads.length
-    } else {
-      lines.push({ centerY, quads: [quad] })
-    }
-  }
-
-  const lastVisualLine = lines.reduce((lastLine, line) =>
-    line.centerY > lastLine.centerY ? line : lastLine,
-  )
-  const rightmostQuad = lastVisualLine.quads.reduce((rightmost, quad) =>
-    getQuadRightMiddle(quad).x > getQuadRightMiddle(rightmost).x
-      ? quad
-      : rightmost,
-  )
-
-  return getQuadRightMiddle(rightmostQuad)
-}
-
-function getFiniteNumber(...values: unknown[]) {
-  for (const value of values) {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      return value
-    }
-  }
-
-  return null
-}
-
-function getPageNumberFromContentBox(box: any) {
-  const pageNumber = getFiniteNumber(
-    box?.PageNumber,
-    box?.pageNumber,
-    box?.getPageNumber?.(),
-  )
-
-  if (pageNumber !== null) return pageNumber
-
-  const pageIndex = getFiniteNumber(box?.pageIndex, box?.getPageIndex?.())
-
-  return pageIndex === null ? null : pageIndex + 1
-}
-
-function extractEditedRectFromPayload(payload: any): EditedRect | null {
-  const box = payload?.ra ?? payload?.editor ?? payload
-
-  if (!box) return null
-
-  const rect = (box.getRect?.() ??
-    box.getBBox?.() ??
-    box.getBoundingRect?.() ??
-    box.rect ??
-    box.Rect ??
-    {}) as RectLike
-
-  const pageNumber = getPageNumberFromContentBox(box)
-  const x1 = getFiniteNumber(rect.x1, rect.getX1?.(), box.X, box.x)
-  const y1 = getFiniteNumber(rect.y1, rect.getY1?.(), box.Y, box.y)
-  const width = getFiniteNumber(rect.width, rect.getWidth?.(), box.Width, box.width)
-  const height = getFiniteNumber(
-    rect.height,
-    rect.getHeight?.(),
-    box.Height,
-    box.height,
-  )
-  const x2 = getFiniteNumber(
-    rect.x2,
-    rect.getX2?.(),
-    x1 !== null && width !== null ? x1 + width : null,
-  )
-  const y2 = getFiniteNumber(
-    rect.y2,
-    rect.getY2?.(),
-    y1 !== null && height !== null ? y1 + height : null,
-  )
-
-  if (
-    pageNumber === null ||
-    x1 === null ||
-    y1 === null ||
-    x2 === null ||
-    y2 === null
-  ) {
-    return null
-  }
-
-  return { pageNumber, x1, y1, x2, y2 }
-}
-
-function dedupeEditedRects(rects: EditedRect[]) {
-  const seen = new Set<string>()
-  const result: EditedRect[] = []
-
-  for (const rect of rects) {
-    const key = [
-      rect.pageNumber,
-      rect.x1.toFixed(2),
-      rect.y1.toFixed(2),
-      rect.x2.toFixed(2),
-      rect.y2.toFixed(2),
-    ].join(':')
-
-    if (seen.has(key)) continue
-
-    seen.add(key)
-    result.push(rect)
-  }
-
-  return result
-}
-
-function doRectsOverlap(a: EditedRect, b: EditedRect, padding = 4) {
-  if (a.pageNumber !== b.pageNumber) return false
-
-  const aX1 = Math.min(a.x1, a.x2) - padding
-  const aX2 = Math.max(a.x1, a.x2) + padding
-  const aY1 = Math.min(a.y1, a.y2) - padding
-  const aY2 = Math.max(a.y1, a.y2) + padding
-
-  const bX1 = Math.min(b.x1, b.x2) - padding
-  const bX2 = Math.max(b.x1, b.x2) + padding
-  const bY1 = Math.min(b.y1, b.y2) - padding
-  const bY2 = Math.max(b.y1, b.y2) + padding
-
-  return aX1 <= bX2 && aX2 >= bX1 && aY1 <= bY2 && aY2 >= bY1
-}
-
-function isLikelyContentEditAnnotation(annotation: AnyAnnotation) {
-  if (isCommentAnchor(annotation)) return false
-
-  return (
-    isContentEditPlaceholderAnnotation(annotation) ||
-    annotation?.Subject === 'Rectangle' ||
-    annotation?.ToolName === 'ContentEdit'
-  )
-}
-
-function collectContentEditAnnotationRects(instance: WebViewerInstance) {
-  const annotations =
-    instance.Core.annotationManager.getAnnotationsList?.() ?? []
-
-  return annotations
-    .filter((annotation: AnyAnnotation) =>
-      isLikelyContentEditAnnotation(annotation),
-    )
-    .map((annotation: AnyAnnotation) => extractEditedRectFromPayload(annotation))
-    .filter((rect: EditedRect | null): rect is EditedRect => Boolean(rect))
-}
-
-function collectDegradedCommentAnnotationIds(
-  instance: WebViewerInstance,
-  editedRects: EditedRect[],
-) {
-  const annotations =
-    instance.Core.annotationManager.getAnnotationsList?.() ?? []
-
-  return Array.from(
-    new Set(
-      annotations
-        .filter((annotation: AnyAnnotation) => isCommentAnchor(annotation))
-        .filter((annotation: AnyAnnotation) => !isDocHubAvatarMarker(annotation))
-        .filter((annotation: AnyAnnotation) => {
-          const annotationRect = extractEditedRectFromPayload(annotation)
-
-          return annotationRect
-            ? editedRects.some((rect) => doRectsOverlap(annotationRect, rect))
-            : false
-        })
-        .map((annotation: AnyAnnotation) => getThreadIdFromAnnotation(annotation))
-        .filter((id: string | null): id is string => Boolean(id)),
-    ),
-  )
-}
-
-function isCommentAnchor(annotation: AnyAnnotation) {
-  return (
-    annotation?.getCustomData?.(COMMENT_ANCHOR_TYPE_KEY) ===
-    COMMENT_ANCHOR_TYPE ||
-    annotation?.getCustomData?.(DOC_HUB_MANAGED_KEY) === 'true'
-  )
-}
-
-function isTemporaryCommentAnchor(annotation: AnyAnnotation) {
-  return (
-    annotation?.getCustomData?.(TEMPORARY_ANCHOR_KEY) === 'true' ||
-    annotation?.getCustomData?.(DOC_HUB_KIND_KEY) ===
-    DOC_HUB_KIND_PENDING_COMMENT_HIGHLIGHT
-  )
-}
-
-function getThreadIdFromAnnotation(annotation: AnyAnnotation) {
-  const id =
-    annotation?.getCustomData?.(DOC_HUB_ANNOTATION_ID_KEY) ??
-    annotation?.getCustomData?.(COMMENT_THREAD_ID_KEY)
-
-  return typeof id === 'string' && id.length > 0 ? id : null
-}
-
-function getDocHubKind(annotation: AnyAnnotation) {
-  const kind = annotation?.getCustomData?.(DOC_HUB_KIND_KEY)
-
-  return typeof kind === 'string' ? kind : null
-}
-
-function isDocHubAvatarMarker(annotation: AnyAnnotation) {
-  return getDocHubKind(annotation) === DOC_HUB_KIND_AVATAR_MARKER
-}
-
-function setDocHubManagedData(
-  annotation: AnyAnnotation,
-  kind: string,
-  threadId: string | null,
-) {
-  annotation.setCustomData?.(DOC_HUB_MANAGED_KEY, 'true')
-  annotation.setCustomData?.(DOC_HUB_KIND_KEY, kind)
-  annotation.setCustomData?.(DOC_HUB_ROLE_KEY, kind)
-
-  if (threadId) {
-    annotation.setCustomData?.(DOC_HUB_ANNOTATION_ID_KEY, threadId)
-  }
-}
-
-function setCommentAnchorData(
-  annotation: AnyAnnotation,
-  threadId: string | null,
-  temporary = false,
-) {
-  annotation.setCustomData?.(COMMENT_ANCHOR_TYPE_KEY, COMMENT_ANCHOR_TYPE)
-  setDocHubManagedData(
-    annotation,
-    temporary
-      ? DOC_HUB_KIND_PENDING_COMMENT_HIGHLIGHT
-      : DOC_HUB_KIND_COMMENT_HIGHLIGHT,
-    threadId,
-  )
-
-  if (threadId) {
-    annotation.setCustomData?.(COMMENT_THREAD_ID_KEY, threadId)
-  }
-
-  if (temporary) {
-    annotation.setCustomData?.(TEMPORARY_ANCHOR_KEY, 'true')
-  } else {
-    annotation.setCustomData?.(TEMPORARY_ANCHOR_KEY, 'false')
-  }
-}
-
-function setCommentAnchorStyle(instance: WebViewerInstance, annotation: AnyAnnotation) {
-  const { Annotations } = instance.Core
-
-  annotation.StrokeColor = new Annotations.Color(246, 194, 64)
-  annotation.FillColor = new Annotations.Color(255, 232, 128)
-  annotation.Opacity = 0.45
-  annotation.NoMove = true
-  annotation.NoResize = true
-  annotation.NoDelete = true
-}
+} from '../../../comments/components/CommentAnnotationOverlayLayer';
+import { PdfPageControls } from './ControlProps';
+import WebViewerModule from '@pdftron/webviewer';
+
+import type {
+  AnyAnnotation,
+  AnyContentBoxEditor,
+  AnyQuad,
+  AprysePdfViewerProps,
+  AprysePdfViewerRef,
+  PageBoundAvatarMarker,
+  PagePoint,
+  ProjectedAvatarMarker,
+  TextSelection,
+} from '../../types/apryse.types';
+import {
+  APRYSE_ZOOM_UI_ELEMENTS,
+  COMMENT_MARKER_OVERLAY_GAP,
+  COMMENT_MARKER_SIZE,
+  LOCKED_PDF_ZOOM,
+  SELECTION_ACTION_OVERLAY_GAP,
+  ZOOM_LOCK_ENABLED,
+} from '../../constants/apryse.constants';
+import {
+  clickInsideApryseShadowRoot,
+  findApryseScrollContainer,
+  wait,
+  waitFrame,
+} from '../../utils/apryse.dom.util';
+import {
+  collectContentEditAnnotationRects,
+  collectDegradedCommentAnnotationIds,
+  dedupeEditedRects,
+  endContentEditMode,
+  extractEditedRectFromPayload,
+  getContentEditManager,
+  stopAllContentBoxEditing,
+} from '../../utils/apryse.content-edit.util';
+import {
+  getQuadBounds,
+  getTextAnchorFromQuads,
+} from '../../utils/apryse.geometry.util';
+import {
+  getThreadIdFromAnnotation,
+  isCommentAnchor,
+  isDocHubAvatarMarker,
+  setCommentAnchorData,
+  setCommentAnchorStyle,
+  setHiddenPointAnchorStyle,
+} from '../../utils/apryse.comment-annotation.util';
+
+const WebViewer = (WebViewerModule as any).default ?? WebViewerModule;
+
+export type {
+  AprysePdfViewerProps,
+  AprysePdfViewerRef,
+  EditedPdfExport,
+} from '../../types/apryse.types';
 
 export const AprysePdfViewer = forwardRef<
   AprysePdfViewerRef,
@@ -808,12 +140,6 @@ export const AprysePdfViewer = forwardRef<
 
   function isCommentOverlayHidden() {
     return Boolean(commentsDisabledRef.current || isPdfEditingRef.current)
-  }
-
-  function getCurrentZoomLevel() {
-    const instance = instanceRef.current
-
-    return instance?.Core.documentViewer.getZoomLevel?.() ?? null
   }
 
   function configureLockedZoomUi(instance: WebViewerInstance) {
@@ -1444,7 +770,7 @@ export const AprysePdfViewer = forwardRef<
     temporaryAnchorIdRef.current = null
   }
 
-  function removeRenderedCommentAnchors(reason: string) {
+  function removeRenderedCommentAnchors() {
     const instance = instanceRef.current;
 
     if (!instance) return [];
@@ -1466,7 +792,7 @@ export const AprysePdfViewer = forwardRef<
     return commentAnchors;
   }
 
-  function removeRenderedAvatarMarkers(reason: string) {
+  function removeRenderedAvatarMarkers() {
     const instance = instanceRef.current
 
     if (!instance) return []
@@ -1629,31 +955,6 @@ export const AprysePdfViewer = forwardRef<
     UI.annotationPopup?.update?.([])
   }
 
-  function setHiddenPointAnchorStyle(
-    instance: WebViewerInstance,
-    annotation: AnyAnnotation,
-  ) {
-    const { Annotations } = instance.Core
-
-    annotation.NoMove = true
-    annotation.NoResize = true
-    annotation.NoDelete = true
-    annotation.Locked = true
-    annotation.ReadOnly = true
-    annotation.Printable = false
-
-    annotation.Opacity = 0
-
-    const transparentColor = new Annotations.Color(255, 255, 255, 0)
-
-    annotation.StrokeColor = transparentColor
-    annotation.FillColor = transparentColor
-    annotation.TextColor = transparentColor
-
-    annotation.setCustomData?.('docHubCommentAnchor', 'true')
-    annotation.setCustomData?.('docHubHiddenAnchor', 'true')
-  }
-
   async function renderCommentThreads(threads: CommentThread[]) {
     const instance = instanceRef.current
 
@@ -1670,7 +971,7 @@ export const AprysePdfViewer = forwardRef<
     renderSequenceRef.current = sequence
 
     if (isPdfEditingRef.current) {
-      removeRenderedCommentAnchors('skip-render-while-editing')
+      removeRenderedCommentAnchors()
       setCommentMarkerOverlays([])
       return
     }
@@ -1946,11 +1247,9 @@ export const AprysePdfViewer = forwardRef<
         markerHoverTimeoutRef.current = null
       }
 
-      removeRenderedAvatarMarkers('show-comment-avatar-markers-disabled')
+      removeRenderedAvatarMarkers()
       requestAnimationFrame(() => {
-        removeRenderedAvatarMarkers(
-          'show-comment-avatar-markers-disabled-after-frame',
-        )
+        removeRenderedAvatarMarkers()
       })
       return
     }
@@ -2033,8 +1332,7 @@ export const AprysePdfViewer = forwardRef<
           }
         }
 
-        const handleContentBoxEditEnded = (...args: any[]) => {
-          const payload = args[0];
+        const handleContentBoxEditEnded = () => {
           activeContentEditorRef.current = null;
         }
 
@@ -2204,7 +1502,7 @@ export const AprysePdfViewer = forwardRef<
         editedRectsRef.current = []
 
         await removeTemporaryCommentAnchor()
-        removeRenderedCommentAnchors('enter-edit-mode')
+        removeRenderedCommentAnchors()
 
         UI.enableFeatures([UI.Feature.ContentEdit])
 
@@ -2230,16 +1528,16 @@ export const AprysePdfViewer = forwardRef<
           skipNextEditExitCommentRestoreRef.current
 
         if (skippedStaleCommentRestore) {
-          removeRenderedCommentAnchors('exit-edit-after-save-skip-stale-restore')
+          removeRenderedCommentAnchors();
           await renderCommentThreads(
             getThreadsWithOptimisticPointMarkers(
               lastDegradedAnnotationIdsRef.current,
             ),
           )
-          lastDegradedAnnotationIdsRef.current = []
-          skipNextEditExitCommentRestoreRef.current = false
+          lastDegradedAnnotationIdsRef.current = [];
+          skipNextEditExitCommentRestoreRef.current = false;
         } else {
-          await renderCommentThreads(commentThreadsRef.current)
+          await renderCommentThreads(commentThreadsRef.current);
         }
       }
     }
@@ -2312,9 +1610,7 @@ export const AprysePdfViewer = forwardRef<
 
       if (!doc) return null
 
-      const commentAnchorsBeforePdfExport = removeRenderedCommentAnchors(
-        'before-pdf-export',
-      );
+      removeRenderedCommentAnchors();
 
       let fileData: ArrayBuffer;
 
