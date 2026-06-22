@@ -6,9 +6,20 @@ import { DocumentActionMenu } from './DocumentActionMenu'
 interface DocumentRowProps {
   workspaceId: string
   document: Document
+  menuOpen: boolean
+  onToggleMenu: () => void
+  onCloseMenu: () => void
+  onShare: () => void
 }
 
-export function DocumentRow({ workspaceId, document }: DocumentRowProps) {
+export function DocumentRow({
+  workspaceId,
+  document,
+  menuOpen,
+  onToggleMenu,
+  onCloseMenu,
+  onShare,
+}: DocumentRowProps) {
   const ownerName =
     typeof document.ownerId === 'object'
       ? document.ownerId.fullName
@@ -37,7 +48,14 @@ export function DocumentRow({ workspaceId, document }: DocumentRowProps) {
       <td className="py-3 text-stone-800">{updatedDate}</td>
 
       <td className="relative py-3 text-right">
-        <DocumentActionMenu workspaceId={workspaceId} document={document} />
+        <DocumentActionMenu
+          workspaceId={workspaceId}
+          document={document}
+          open={menuOpen}
+          onToggle={onToggleMenu}
+          onClose={onCloseMenu}
+          onShare={onShare}
+        />
       </td>
     </tr>
   )
