@@ -2,15 +2,12 @@ import type { DocumentExternalUser, ShareRole } from '../../types/document.type'
 import { useUpdateDocumentUserRole } from '../../hooks/useUpdateDocumentUserRole'
 import { useRemoveDocumentAccess } from '../../hooks/useRemoveDocumentAccess'
 import { ShareRoleSelect } from './ShareRoleSelect'
+import Avatar from '../../../../assets/avatar.png'
 
 interface Props {
   user: DocumentExternalUser
   workspaceId: string
   documentId: string
-}
-
-function getInitialLabel(name: string, email: string) {
-  return (name || email).charAt(0).toUpperCase()
 }
 
 export function ExternalAccessRow({ user, workspaceId, documentId }: Props) {
@@ -24,9 +21,11 @@ export function ExternalAccessRow({ user, workspaceId, documentId }: Props) {
   return (
     <div className="flex items-center justify-between py-1.5">
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-stone-900 text-xs font-semibold text-white">
-          {getInitialLabel(user.fullName, user.email)}
-        </div>
+        <img
+          src={Avatar}
+          alt=""
+          className="h-9 w-9 shrink-0 rounded-full object-cover"
+        />
 
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-stone-950">

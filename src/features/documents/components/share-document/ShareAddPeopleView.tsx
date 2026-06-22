@@ -16,7 +16,7 @@ interface Props {
 }
 
 function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  return /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email)
 }
 
 export function ShareAddPeopleBar({ workspaceId, documentId }: Props) {
@@ -117,7 +117,13 @@ export function ShareAddPeopleBar({ workspaceId, documentId }: Props) {
               />
             </div>
 
-            <ShareRoleSelect value={role} onChange={setRole} variant="inline" />
+            <div className="self-start">
+              <ShareRoleSelect
+                value={role}
+                onChange={setRole}
+                variant="inline"
+              />
+            </div>
           </div>
 
           {showDropdown && (

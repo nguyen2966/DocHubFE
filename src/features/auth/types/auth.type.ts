@@ -7,6 +7,7 @@ export interface SignupPayload {
   fullName: string
   email: string
   password: string
+  invitationToken?: string | null
 }
 
 export interface AuthUser {
@@ -15,8 +16,8 @@ export interface AuthUser {
   fullName: string
 }
 
-export interface AuthResponse {
-  accessToken: string
-  refreshToken: string
+export interface VerifyEmailResponse {
   user: AuthUser
+  redirectTo: string
+  sessionStarted: boolean
 }

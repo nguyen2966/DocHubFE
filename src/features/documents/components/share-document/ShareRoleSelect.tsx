@@ -1,5 +1,5 @@
 import { CaretDown, Trash } from '@phosphor-icons/react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import type { ShareRole } from '../../types/document.type'
@@ -27,28 +27,45 @@ export function ShareRoleSelect({
   removeDisabled,
 }: Props) {
   const [open, setOpen] = useState(false)
-  const [dropdownPosition, setDropdownPosition] = useState({
-    top: 0,
-    left: 0,
-  })
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number
+    left: number
+  } | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const dropdownRef = useRef<HTMLDivElement | null>(null)
 
-  const updateDropdownPosition = () => {
+  const getDropdownPosition = () => {
     const trigger = containerRef.current
-    if (!trigger) return
+    if (!trigger) return null
 
     const rect = trigger.getBoundingClientRect()
-    const dropdownWidth = 288
+    const dropdownWidth = 242
+    const dropdownHeight = 232
     const viewportPadding = 12
+    const preferredTop = rect.bottom + 8
+    const maxTop = Math.max(
+      viewportPadding,
+      window.innerHeight - dropdownHeight - viewportPadding,
+    )
+    const maxLeft = Math.max(
+      viewportPadding,
+      window.innerWidth - dropdownWidth - viewportPadding,
+    )
 
-    setDropdownPosition({
-      top: rect.bottom + 8,
+    return {
+      top: Math.min(Math.max(viewportPadding, preferredTop), maxTop),
       left: Math.min(
         Math.max(viewportPadding, rect.right - dropdownWidth),
-        window.innerWidth - dropdownWidth - viewportPadding,
+        maxLeft,
       ),
-    })
+    }
+  }
+
+  const updateDropdownPosition = () => {
+    const nextPosition = getDropdownPosition()
+    if (nextPosition) {
+      setDropdownPosition(nextPosition)
+    }
   }
 
   useEffect(() => {
@@ -68,10 +85,14 @@ export function ShareRoleSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return
 
     updateDropdownPosition()
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
 
     window.addEventListener('resize', updateDropdownPosition)
     window.addEventListener('scroll', updateDropdownPosition, true)
@@ -84,17 +105,26 @@ export function ShareRoleSelect({
 
   const triggerClasses =
     variant === 'inline'
-      ? 'h-8 px-2 text-sm font-semibold text-stone-900'
-      : 'h-8 rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium text-stone-900 shadow-sm hover:bg-stone-50'
+      ? 'h-8 rounded-lg px-2 text-sm font-semibold text-stone-900'
+      : 'h-8 rounded-lg px-3 text-sm font-medium text-stone-900 hover:bg-stone-50'
 
   return (
     <div ref={containerRef} className="relative inline-flex items-center">
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          if (!open) {
+            setDropdownPosition(getDropdownPosition())
+          }
+
+          setOpen((current) => !current)
+        }}
         className={[
           'inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60',
+          open
+            ? 'border-2 border-stone-400 bg-white'
+            : 'border-0 bg-transparent',
           triggerClasses,
         ].join(' ')}
       >
@@ -103,6 +133,7 @@ export function ShareRoleSelect({
       </button>
 
       {open &&
+        dropdownPosition &&
         createPortal(
         <div
           ref={dropdownRef}
@@ -110,7 +141,7 @@ export function ShareRoleSelect({
             top: dropdownPosition.top,
             left: dropdownPosition.left,
           }}
-          className="fixed z-[100] w-72 overflow-hidden rounded-lg border border-stone-200 bg-white py-2 text-left shadow-xl"
+          className="fixed z-[100] h-[232px] w-[242px] overflow-y-auto rounded-lg border border-stone-200 bg-white py-2 text-left shadow-xl"
         >
           {SHARE_ROLES.map((role) => (
             <button

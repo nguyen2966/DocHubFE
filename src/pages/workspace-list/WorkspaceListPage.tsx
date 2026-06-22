@@ -35,7 +35,7 @@ export function WorkspaceListPage() {
             </div>
 
             <Button
-              className="flex items-center gap-2"
+              className="inline-flex items-center gap-2 whitespace-nowrap"
               onClick={() => setIsCreateOpen(true)}
               disabled={false}
             >

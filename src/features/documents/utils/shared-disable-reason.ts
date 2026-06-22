@@ -7,7 +7,7 @@ export function getDisabledReasonLabel(reason: DisabledReason) {
 
   return {
     OWNER: 'Document owner',
-    WORKSPACE_MEMBER: 'Already in workspace',
-    ALREADY_HAS_DOCUMENT_PERMISSION: 'Already has access',
+    WORKSPACE_MEMBER: 'In Workspace',
+    ALREADY_HAS_DOCUMENT_PERMISSION: 'Has access',
   }[reason]
 }

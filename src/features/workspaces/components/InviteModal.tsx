@@ -88,7 +88,7 @@ export function InviteModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[1px]">
-      <div className="bg-white rounded-[24px] shadow-xl w-full max-w-[460px] mx-4 overflow-hidden border border-stone-100">
+      <div className="bg-white rounded-[24px] shadow-xl w-full max-w-[460px] mx-4 overflow-visible border border-stone-100">
 
         {/* Header */}
         <div className="px-6 pt-6 pb-2 flex items-start justify-between">
@@ -132,14 +132,14 @@ export function InviteModal({
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={emails.length ? "" : "e.g colleague@company.com"}
+                    placeholder="e.g. abc@lumin.com"
                     className="flex-1 min-w-[120px] outline-none text-[13.5px] text-stone-800 placeholder:text-stone-400 bg-transparent py-0.5"
                   />
                 </div>
 
                 {/* Suggestions Dropdown (Bao gồm cả Unregistered User) */}
                 {(suggestions.length > 0 || isSearching || showUnregistered) && (
-                  <div className="absolute z-20 top-full left-0 right-0 mt-1.5 bg-white border border-stone-200/80 rounded-xl shadow-lg overflow-hidden max-h-[260px] overflow-y-auto">
+                  <div className="absolute z-[70] top-full left-0 right-0 mt-1.5 max-h-[248px] overflow-y-auto rounded-xl border border-stone-200/80 bg-white shadow-lg">
                     {isSearching && <div className="px-4 py-3 text-xs text-stone-400 font-normal animate-pulse">Searching...</div>}
 
                     {/* Render Registered Users */}
@@ -206,7 +206,7 @@ export function InviteModal({
                   </svg>
                 </button>
                 {roleOpen && (
-                  <div className="absolute z-10 bottom-full mb-1.5 w-full bg-white border border-stone-200 rounded-xl shadow-lg overflow-hidden">
+                  <div className="absolute z-[70] top-full mt-1.5 w-full overflow-hidden rounded-xl border border-stone-200 bg-white shadow-lg">
                     {(['member', 'admin'] as const).map(r => (
                       <button
                         key={r}
