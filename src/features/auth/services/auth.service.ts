@@ -1,26 +1,32 @@
 import api from '../../../shared/lib/axios';
-import { LoginPayload, SignupPayload, AuthUser } from '../types/auth.type';
 import authApi from '../../../shared/lib/refreshAxios';
+import type {
+  AuthUser,
+  LoginPayload,
+  SignupPayload,
+  VerifyEmailResponse,
+} from '../types/auth.type';
 
 export const authService = {
   login: (payload: LoginPayload) =>
     api.post<{ user: AuthUser }>('/auth/login', payload),
-    // Server set cả AT và RT vào cookie, response chỉ cần trả user
 
   signup: (payload: SignupPayload) =>
     api.post<{ message: string }>('/auth/register', payload),
 
-  logout: () =>
-    api.post('/auth/logout'),
+  verifyEmail: (token: string) =>
+    api.post<VerifyEmailResponse>('/auth/verify-email', { token }),
+
+  logout: () => api.post('/auth/logout'),
 
   refreshToken: () =>
-    authApi.post<{ user: AuthUser }>('/auth/refresh-token'),
+    authApi.post<{ message: string }>('/auth/refresh-token'),
 
-  resendVerificationEmail: (email: string) => {
-    api.post('/auth/resend-verification', { email })
-   // console.log("authApi was called instead of api");
-  },
-    
-  me: ()=> 
-    api.get('/auth/me'),
+  resendVerificationEmail: (email: string) =>
+    api.post('/auth/resend-verification', { email }),
+
+  me: () => api.get<{ user: AuthUser }>('/auth/me'),
+
+  meNoRefresh: () =>
+    authApi.get('/auth/me'),
 }

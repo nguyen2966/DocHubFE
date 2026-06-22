@@ -102,7 +102,7 @@ export function WorkspaceSwitcher() {
             type="button"
             onClick={() => {
               setOpen(false)
-              navigate('/workspaces')
+              navigate('/')
             }}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-stone-900 hover:bg-stone-50"
           >
@@ -114,7 +114,7 @@ export function WorkspaceSwitcher() {
             type="button"
             onClick={() => {
               setOpen(false)
-              navigate('/workspaces')
+              navigate('/')
             }}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-stone-900 hover:bg-stone-50"
           >

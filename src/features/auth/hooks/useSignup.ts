@@ -12,24 +12,33 @@ export function useSignup() {
   const onSubmit = async (values: SignupFormValues) => {
     setServerError(null)
     setIsLoading(true)
-    try {
-      await authService.signup(values)
 
-      // Giữ invitationToken trong state để WelcomePage biết cần redirect vào workspace
-      // (backend claimPendingInvitations chạy tự động khi verify email,
-      //  WelcomePage đọc claimedWorkspaceId từ response của /auth/me sau verify)
+    try {
       const invitationToken = searchParams.get('invitationToken')
+
+      await authService.signup({
+        ...values,
+        invitationToken,
+      })
 
       navigate('/verify-email', {
         state: {
           email: values.email,
-          invitationToken, // truyền sang VerifyEmailNotice để hiển thị hint nếu cần
         },
       })
     } catch (error: any) {
       const status = error.response?.status
-      if (status === 409) setServerError('This email is already in use.')
-      else setServerError('Something went wrong. Please try again.')
+
+      if (status === 409) {
+        setServerError('This email is already in use.')
+      } else if (status === 400 || status === 403) {
+        setServerError(
+          error.response?.data?.message ??
+            'This invitation cannot be used with that email.',
+        )
+      } else {
+        setServerError('Something went wrong. Please try again.')
+      }
     } finally {
       setIsLoading(false)
     }

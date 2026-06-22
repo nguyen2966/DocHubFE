@@ -15,32 +15,41 @@ export function useLogin() {
   const onSubmit = async (values: LoginFormValues) => {
     setServerError(null)
     setIsLoading(true)
+
     try {
       const { data } = await authService.login(values)
       setAuth(data.user)
 
-      // Registered user vừa được redirect từ invitation link:
-      // ?next=/invitations/:token/accept → gọi POST accept rồi redirect vào workspace
       const next = searchParams.get('next')
+
       if (next?.startsWith('/invitations/') && next.endsWith('/accept')) {
         const token = next.split('/')[2]
+
         try {
           const { data: acceptData } = await api.post<{ workspaceId: string }>(
             `/workspaces/invitations/${token}/accept`,
           )
-          navigate(`/workspaces/${acceptData.workspaceId}`, { replace: true })
+
+          navigate(`/workspaces/${acceptData.workspaceId}/documents`, {
+            replace: true,
+          })
           return
         } catch {
-          // Token hết hạn hoặc đã dùng → vào dashboard bình thường
+          // Expired or already-used invitation: fall back to the dashboard.
         }
       }
 
       navigate('/', { replace: true })
     } catch (error: any) {
       const status = error.response?.status
-      if (status === 401) setServerError('Incorrect email or password. Please try again.')
-      else if (status === 403) setServerError('Please verify your account before signing in.')
-      else setServerError('Something went wrong. Please try again.')
+
+      if (status === 401) {
+        setServerError('Incorrect email or password. Please try again.')
+      } else if (status === 403) {
+        setServerError('Please verify your account before signing in.')
+      } else {
+        setServerError('Something went wrong. Please try again.')
+      }
     } finally {
       setIsLoading(false)
     }

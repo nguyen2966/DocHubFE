@@ -22,18 +22,18 @@ export function AcceptInvitationPage() {
 
       try {
         // 1. Kiểm tra user hiện đang login không
-        const meRes = await authService.me()
-        setAuth(meRes.data.user)
+        const meRes = await authService.meNoRefresh();
+        setAuth(meRes.data.user);
 
         // 2. Nếu login rồi thì gọi API accept dành cho authenticated user
         const { data } = await api.post<{ workspaceId: string }>(
           `/workspaces/invitations/${token}/accept-authenticated`,
-        )
+        );
 
         // 3. Redirect vào document list
         navigate(`/workspaces/${data.workspaceId}/documents`, {
           replace: true,
-        })
+        });
       } catch (error: any) {
         const status = error.response?.status
 
