@@ -656,123 +656,6 @@ function collectDegradedCommentAnnotationIds(
   )
 }
 
-const APRYSE_DEBUG_STORAGE_KEY = 'doc-hub:apryse-debug-log'
-
-function getDebugKeys(value: unknown) {
-  if (!value || typeof value !== 'object') return null
-
-  try {
-    const ownKeys = Reflect.ownKeys(value).map(String)
-    const prototype = Object.getPrototypeOf(value)
-    const prototypeKeys = prototype ? Reflect.ownKeys(prototype).map(String) : []
-
-    return {
-      ownKeys,
-      prototypeKeys,
-    }
-  } catch {
-    return null
-  }
-}
-
-function readRectLikeForDebug(value: any) {
-  if (!value) return null
-
-  const rect = value.getRect?.() ??
-    value.getBBox?.() ??
-    value.getBoundingRect?.() ??
-    value.rect ??
-    value.Rect ??
-    null
-
-  return {
-    keys: getDebugKeys(value),
-    pageNumber: getFiniteNumber(
-      value.PageNumber,
-      value.pageNumber,
-      value.getPageNumber?.(),
-    ),
-    pageIndex: getFiniteNumber(value.pageIndex, value.getPageIndex?.()),
-    rect: rect
-      ? {
-        keys: getDebugKeys(rect),
-        x1: getFiniteNumber(rect.x1, rect.getX1?.()),
-        y1: getFiniteNumber(rect.y1, rect.getY1?.()),
-        x2: getFiniteNumber(rect.x2, rect.getX2?.()),
-        y2: getFiniteNumber(rect.y2, rect.getY2?.()),
-        width: getFiniteNumber(rect.width, rect.getWidth?.()),
-        height: getFiniteNumber(rect.height, rect.getHeight?.()),
-      }
-      : null,
-    x: getFiniteNumber(value.X, value.x),
-    y: getFiniteNumber(value.Y, value.y),
-    width: getFiniteNumber(value.Width, value.width),
-    height: getFiniteNumber(value.Height, value.height),
-  }
-}
-
-function getPayloadDebugData(payload: any, rect: EditedRect | null) {
-  return {
-    payloadKeys: getDebugKeys(payload),
-    extractedRect: rect,
-    payload: readRectLikeForDebug(payload),
-    editor: readRectLikeForDebug(payload?.editor),
-    ra: readRectLikeForDebug(payload?.ra),
-  }
-}
-
-function getAnnotationDebugData(annotation: AnyAnnotation) {
-  return {
-    id: annotation?.Id ?? null,
-    subject: annotation?.Subject ?? null,
-    pageNumber: annotation?.PageNumber ?? null,
-    x: annotation?.X ?? null,
-    y: annotation?.Y ?? null,
-    width: annotation?.Width ?? null,
-    height: annotation?.Height ?? null,
-    isCommentAnchor: isCommentAnchor(annotation),
-    isTemporaryCommentAnchor: isTemporaryCommentAnchor(annotation),
-    threadId: getThreadIdFromAnnotation(annotation),
-    docHubManaged: annotation?.getCustomData?.(DOC_HUB_MANAGED_KEY) ?? null,
-    docHubKind: annotation?.getCustomData?.(DOC_HUB_KIND_KEY) ?? null,
-  }
-}
-
-function getAnnotationManagerDebugData(instance: WebViewerInstance | null) {
-  if (!instance) return []
-
-  const annotations =
-    instance.Core.annotationManager.getAnnotationsList?.() ?? []
-
-  return annotations.map((annotation: AnyAnnotation) =>
-    getAnnotationDebugData(annotation),
-  )
-}
-
-function writeApryseDebugLog(label: string, data: unknown) {
-  // debug only: Apryse clears the console during save, so persist compact logs.
-  if (typeof window === 'undefined') return
-
-  try {
-    const existing = window.localStorage.getItem(APRYSE_DEBUG_STORAGE_KEY)
-    const entries = existing ? JSON.parse(existing) : []
-    const nextEntries = Array.isArray(entries) ? entries : []
-
-    nextEntries.push({
-      at: new Date().toISOString(),
-      label,
-      data,
-    })
-
-    window.localStorage.setItem(
-      APRYSE_DEBUG_STORAGE_KEY,
-      JSON.stringify(nextEntries.slice(-80)),
-    )
-  } catch (error) {
-    console.warn('Failed to write Apryse debug log:', error)
-  }
-}
-
 function isCommentAnchor(annotation: AnyAnnotation) {
   return (
     annotation?.getCustomData?.(COMMENT_ANCHOR_TYPE_KEY) ===
@@ -984,12 +867,6 @@ export const AprysePdfViewer = forwardRef<
         console.warn('Apryse zoom API is not available for zoom lock')
       }
 
-      writeApryseDebugLog('lockedZoom-enforced', {
-        reason,
-        previousZoom: currentZoom ?? null,
-        nextZoom: documentViewer.getZoomLevel?.() ?? null,
-        lockedZoom: LOCKED_PDF_ZOOM,
-      })
     } finally {
       requestAnimationFrame(() => {
         isEnforcingZoomRef.current = false
@@ -1352,15 +1229,6 @@ export const AprysePdfViewer = forwardRef<
       height: COMMENT_MARKER_SIZE,
     }
 
-    console.debug('[DocHub marker source]', {
-      annotationId: pageBoundMarker.annotationId,
-      source: pageBoundMarker.source,
-      pageNumber: pageBoundMarker.pageNumber,
-      anchor: pageBoundMarker.anchor,
-      overlayPoint,
-      overlayRect,
-    })
-
     return {
       ...pageBoundMarker,
       overlayRect,
@@ -1577,32 +1445,25 @@ export const AprysePdfViewer = forwardRef<
   }
 
   function removeRenderedCommentAnchors(reason: string) {
-    const instance = instanceRef.current
+    const instance = instanceRef.current;
 
-    if (!instance) return []
+    if (!instance) return [];
 
-    const { annotationManager } = instance.Core
+    const { annotationManager } = instance.Core;
     const commentAnchors = annotationManager
       .getAnnotationsList()
       .filter((annotation: AnyAnnotation) =>
         isRenderedCommentAnnotation(annotation),
-      )
-
-    writeApryseDebugLog('removeRenderedCommentAnchors', {
-      reason,
-      commentAnchorsToRemove: commentAnchors.map((annotation: AnyAnnotation) =>
-        getAnnotationDebugData(annotation),
-      ),
-    })
+      );
 
     if (commentAnchors.length > 0) {
       annotationManager.deleteAnnotations(commentAnchors, {
         imported: true,
         force: true,
-      })
+      });
     }
 
-    return commentAnchors
+    return commentAnchors;
   }
 
   function removeRenderedAvatarMarkers(reason: string) {
@@ -1614,13 +1475,6 @@ export const AprysePdfViewer = forwardRef<
     const avatarMarkers = annotationManager
       .getAnnotationsList()
       .filter((annotation: AnyAnnotation) => isDocHubAvatarMarker(annotation))
-
-    writeApryseDebugLog('removeRenderedAvatarMarkers', {
-      reason,
-      avatarMarkersToRemove: avatarMarkers.map((annotation: AnyAnnotation) =>
-        getAnnotationDebugData(annotation),
-      ),
-    })
 
     if (avatarMarkers.length > 0) {
       annotationManager.deleteAnnotations(avatarMarkers, {
@@ -1728,25 +1582,11 @@ export const AprysePdfViewer = forwardRef<
 
     temporaryAnchorIdRef.current = highlight.Id
 
-    writeApryseDebugLog('pendingCommentAnchor-created', {
-      selection,
-      bounds,
-      temporaryAnchor: getAnnotationDebugData(highlight),
-      annotations: getAnnotationManagerDebugData(instance),
-    })
-
     const xfdf = await annotationManager.exportAnnotations({
       annotationList: [highlight],
       links: false,
       widgets: false,
     } as any)
-
-    writeApryseDebugLog('pendingCommentAnchor-xfdf-exported', {
-      temporaryAnchorId: highlight.Id,
-      xfdfLength: xfdf.length,
-      includesTemporaryFlag: xfdf.includes(TEMPORARY_ANCHOR_KEY),
-      includesCommentAnchorType: xfdf.includes(COMMENT_ANCHOR_TYPE_KEY),
-    })
 
     onPendingCommentAnchorCreatedRef.current?.(
       {
@@ -1789,19 +1629,41 @@ export const AprysePdfViewer = forwardRef<
     UI.annotationPopup?.update?.([])
   }
 
+  function setHiddenPointAnchorStyle(
+    instance: WebViewerInstance,
+    annotation: AnyAnnotation,
+  ) {
+    const { Annotations } = instance.Core
+
+    annotation.NoMove = true
+    annotation.NoResize = true
+    annotation.NoDelete = true
+    annotation.Locked = true
+    annotation.ReadOnly = true
+    annotation.Printable = false
+
+    annotation.Opacity = 0
+
+    const transparentColor = new Annotations.Color(255, 255, 255, 0)
+
+    annotation.StrokeColor = transparentColor
+    annotation.FillColor = transparentColor
+    annotation.TextColor = transparentColor
+
+    annotation.setCustomData?.('docHubCommentAnchor', 'true')
+    annotation.setCustomData?.('docHubHiddenAnchor', 'true')
+  }
+
   async function renderCommentThreads(threads: CommentThread[]) {
     const instance = instanceRef.current
 
     if (!instance) return
 
     if (!documentLoadedRef.current) {
-      pendingRenderThreadsRef.current = threads
-      setCommentMarkerOverlays([])
+      pendingRenderThreadsRef.current = threads;
+      setCommentMarkerOverlays([]);
 
-      writeApryseDebugLog('renderCommentThreads-deferred-until-documentLoaded', {
-        threadCount: threads.length,
-      })
-      return
+      return;
     }
 
     const sequence = renderSequenceRef.current + 1
@@ -1819,15 +1681,7 @@ export const AprysePdfViewer = forwardRef<
       .getAnnotationsList()
       .filter(
         (annotation: AnyAnnotation) => isRenderedCommentAnnotation(annotation),
-      )
-
-    writeApryseDebugLog('renderCommentThreads-start', {
-      threadCount: threads.length,
-      allAnnotationsBeforeDelete: getAnnotationManagerDebugData(instance),
-      existingCommentAnchorsToDelete: existingCommentAnchors.map(
-        (annotation: AnyAnnotation) => getAnnotationDebugData(annotation),
-      ),
-    })
+      );
 
     if (existingCommentAnchors.length > 0) {
       annotationManager.deleteAnnotations(existingCommentAnchors, {
@@ -1835,21 +1689,17 @@ export const AprysePdfViewer = forwardRef<
         force: true,
       })
     }
-    markerElementsRef.current.clear()
-    setCommentMarkerOverlays([])
-
-    writeApryseDebugLog('renderCommentThreads-after-delete', {
-      annotationsAfterDelete: getAnnotationManagerDebugData(instance),
-    })
+    markerElementsRef.current.clear();
+    setCommentMarkerOverlays([]);
 
     for (const thread of threads) {
-      if (renderSequenceRef.current !== sequence) return
+      if (renderSequenceRef.current !== sequence) return;
 
-      const { annotation } = thread
+      const { annotation } = thread;
 
-      if (annotation.status === 'deleted') continue
+      if (annotation.status === 'deleted') continue;
 
-      const visualState = getThreadVisualState(thread)
+      const visualState = getThreadVisualState(thread);
 
       if (visualState === 'highlight' && annotation.xfdf) {
         try {
@@ -1877,13 +1727,6 @@ export const AprysePdfViewer = forwardRef<
             setCommentAnchorData(importedAnnotation, annotation._id)
             annotationManager.redrawAnnotation(importedAnnotation)
 
-            writeApryseDebugLog('renderCommentThreads-imported-highlight', {
-              annotationId: annotation._id,
-              importedAnnotation: getAnnotationDebugData(importedAnnotation),
-              xfdfIncludesTemporaryFlag: annotation.xfdf.includes(
-                TEMPORARY_ANCHOR_KEY,
-              ),
-            })
           }
         } catch (error) {
           console.warn(
@@ -1892,23 +1735,36 @@ export const AprysePdfViewer = forwardRef<
             error,
           )
         }
-      } else {
-        writeApryseDebugLog('renderCommentThreads-skipped-native-point-marker', {
-          annotationId: annotation._id,
-          visualState,
-          hasXfdf: Boolean(annotation.xfdf),
-          annotations: getAnnotationManagerDebugData(instance),
-        })
+      } else if (visualState === 'point' && annotation.xfdf) {
+        const importedAnnotations = ((await annotationManager.importAnnotations(annotation.xfdf)) as | AnyAnnotation[] | undefined) ?? [];
+
+        if (renderSequenceRef.current !== sequence) return;
+
+        for (const importedAnnotation of importedAnnotations) {
+          if (renderSequenceRef.current !== sequence) return;
+
+          if (annotation.apryseAnnotationId && importedAnnotation.Id !== annotation.apryseAnnotationId) {
+            annotationManager.updateAnnotationId?.(importedAnnotation, annotation.apryseAnnotationId);
+          }
+
+          setHiddenPointAnchorStyle(instance, importedAnnotation);
+          setCommentAnchorData(importedAnnotation, annotation._id);
+
+          importedAnnotation.setCustomData?.('docHubVisualState', 'point');
+          importedAnnotation.setCustomData?.('docHubAnchorMode', 'hidden-xfdf-anchor');
+
+          annotationManager.redrawAnnotation(importedAnnotation);
+        }
       }
+
+      const selectedId = selectedCommentAnnotationIdRef.current
+
+      if (selectedId) {
+        highlightCommentAnnotation(selectedId)
+      }
+
+      scheduleCommentOverlayRefresh()
     }
-
-    const selectedId = selectedCommentAnnotationIdRef.current
-
-    if (selectedId) {
-      highlightCommentAnnotation(selectedId)
-    }
-
-    scheduleCommentOverlayRefresh()
   }
 
   async function scrollToCommentAnnotation(annotationId: string) {
@@ -2163,12 +2019,6 @@ export const AprysePdfViewer = forwardRef<
 
         const contentEditManager = getContentEditManager(instance)
 
-        writeApryseDebugLog('webviewer-ready', {
-          fileUrl,
-          hasContentEditManager: Boolean(contentEditManager),
-          annotations: getAnnotationManagerDebugData(instance),
-        })
-
         const handleContentBoxEditStarted = (...args: any[]) => {
           const payload = args[0]
           const rect = extractEditedRectFromPayload(payload)
@@ -2181,27 +2031,11 @@ export const AprysePdfViewer = forwardRef<
               rect,
             ])
           }
-
-          writeApryseDebugLog('contentBoxEditStarted', {
-            payload: getPayloadDebugData(payload, rect),
-            editedRectsAfter: editedRectsRef.current,
-            annotations: getAnnotationManagerDebugData(instance),
-          })
         }
 
         const handleContentBoxEditEnded = (...args: any[]) => {
-          const payload = args[0]
-
-          writeApryseDebugLog('contentBoxEditEnded', {
-            payload: getPayloadDebugData(
-              payload,
-              extractEditedRectFromPayload(payload),
-            ),
-            editedRectsBeforeClearActiveEditor: editedRectsRef.current,
-            annotations: getAnnotationManagerDebugData(instance),
-          })
-
-          activeContentEditorRef.current = null
+          const payload = args[0];
+          activeContentEditorRef.current = null;
         }
 
         contentEditManager?.addEventListener?.(
@@ -2214,32 +2048,20 @@ export const AprysePdfViewer = forwardRef<
         )
 
         documentViewer.addEventListener('documentLoaded', async () => {
-          documentLoadedRef.current = true
-          setCurrentPage(documentViewer.getCurrentPage())
-          setPageCount(documentViewer.getPageCount())
+          documentLoadedRef.current = true;
+          setCurrentPage(documentViewer.getCurrentPage());
+          setPageCount(documentViewer.getPageCount());
 
-          configureLockedZoomUi(instance)
-          scheduleLockedZoomEnforcement('documentLoaded')
-
-          writeApryseDebugLog('documentLoaded', {
-            currentPage: documentViewer.getCurrentPage(),
-            pageCount: documentViewer.getPageCount(),
-            zoomLevel: getCurrentZoomLevel(),
-            annotationsBeforeRender: getAnnotationManagerDebugData(instance),
-          })
+          configureLockedZoomUi(instance);
+          scheduleLockedZoomEnforcement('documentLoaded');
 
           const threadsToRender =
             pendingRenderThreadsRef.current ?? commentThreadsRef.current
-          pendingRenderThreadsRef.current = null
+          pendingRenderThreadsRef.current = null;
 
-          await renderCommentThreads(threadsToRender)
-          bindCommentOverlayPositionListeners()
-          scheduleCommentOverlayRefresh()
-
-          writeApryseDebugLog('documentLoaded-after-renderCommentThreads', {
-            threadCount: commentThreadsRef.current.length,
-            annotationsAfterRender: getAnnotationManagerDebugData(instance),
-          })
+          await renderCommentThreads(threadsToRender);
+          bindCommentOverlayPositionListeners();
+          scheduleCommentOverlayRefresh();
         })
 
         documentViewer.addEventListener(
@@ -2352,26 +2174,20 @@ export const AprysePdfViewer = forwardRef<
   useEffect(() => {
     const instance = instanceRef.current
 
-    if (!instance || !fileUrl) return
+    if (!instance || !fileUrl) return;
 
-    editedRectsRef.current = []
-    documentLoadedRef.current = false
-    pendingRenderThreadsRef.current = commentThreadsRef.current
-    latestSelectionRef.current = null
-    markerElementsRef.current.clear()
-    setSelectionActionPosition(null)
-    setCommentMarkerOverlays([])
-
-    writeApryseDebugLog('loadDocument-start', {
-      fileUrl,
-      editedRectsAfterReset: editedRectsRef.current,
-      annotationsBeforeLoad: getAnnotationManagerDebugData(instance),
-    })
+    editedRectsRef.current = [];
+    documentLoadedRef.current = false;
+    pendingRenderThreadsRef.current = commentThreadsRef.current;
+    latestSelectionRef.current = null;
+    markerElementsRef.current.clear();
+    setSelectionActionPosition(null);
+    setCommentMarkerOverlays([]);
 
     instance.UI.loadDocument(fileUrl, {
       filename: fileUrl.split('/').pop() ?? 'document.pdf',
-    })
-    scheduleLockedZoomEnforcement('loadDocument')
+    });
+    scheduleLockedZoomEnforcement('loadDocument');
   }, [fileUrl])
 
   useEffect(() => {
@@ -2390,12 +2206,6 @@ export const AprysePdfViewer = forwardRef<
         await removeTemporaryCommentAnchor()
         removeRenderedCommentAnchors('enter-edit-mode')
 
-        writeApryseDebugLog('contentEditMode-enter-start', {
-          hasContentEditManager: Boolean(contentEditManager),
-          editedRectsAfterReset: editedRectsRef.current,
-          annotations: getAnnotationManagerDebugData(instance),
-        })
-
         UI.enableFeatures([UI.Feature.ContentEdit])
 
         await (Core as any).ContentEdit?.preloadWorker?.(contentEditManager)
@@ -2411,18 +2221,7 @@ export const AprysePdfViewer = forwardRef<
         await waitFrame()
         await wait(300)
 
-        writeApryseDebugLog('contentEditMode-enter-finished', {
-          currentPage: Core.documentViewer.getCurrentPage?.(),
-          hasContentEditManager: Boolean(contentEditManager),
-          editedRects: editedRectsRef.current,
-          annotations: getAnnotationManagerDebugData(instance),
-        })
       } else {
-        writeApryseDebugLog('contentEditMode-exit-start', {
-          editedRectsBeforeExit: editedRectsRef.current,
-          annotations: getAnnotationManagerDebugData(instance),
-        })
-
         activeContentEditorRef.current = null
 
         await endContentEditMode(instance)
@@ -2442,12 +2241,6 @@ export const AprysePdfViewer = forwardRef<
         } else {
           await renderCommentThreads(commentThreadsRef.current)
         }
-
-        writeApryseDebugLog('contentEditMode-exit-finished', {
-          editedRectsAfterExit: editedRectsRef.current,
-          skippedStaleCommentRestore,
-          annotations: getAnnotationManagerDebugData(instance),
-        })
       }
     }
 
@@ -2469,83 +2262,44 @@ export const AprysePdfViewer = forwardRef<
 
   useImperativeHandle(ref, () => ({
     async exportEditedPdf() {
-      const instance = instanceRef.current
-      const viewerElement = viewerRef.current
+      const instance = instanceRef.current;
+      const viewerElement = viewerRef.current;
 
-      if (!instance || !viewerElement) return null
+      if (!instance || !viewerElement) return null;
 
-      const { documentViewer } = instance.Core
-
-      writeApryseDebugLog('exportEditedPdf-start', {
-        editedRectsAtStart: editedRectsRef.current,
-        hasActiveContentEditor: Boolean(activeContentEditorRef.current),
-        annotationsAtStart: getAnnotationManagerDebugData(instance),
-      })
+      const { documentViewer } = instance.Core;
 
       try {
-        await activeContentEditorRef.current?.blur?.()
+        await activeContentEditorRef.current?.blur?.();
       } catch (error) {
-        console.warn('Failed to blur active content editor:', error)
+        console.warn('Failed to blur active content editor:', error);
       }
 
-      await waitFrame()
-      await waitFrame()
-      await wait(150)
+      await waitFrame();
+      await waitFrame();
+      await wait(150);
 
-      writeApryseDebugLog('exportEditedPdf-after-blur', {
-        editedRectsAfterBlur: editedRectsRef.current,
-        annotationsAfterBlur: getAnnotationManagerDebugData(instance),
-      })
+      await stopAllContentBoxEditing(instance);
 
-      await stopAllContentBoxEditing(instance)
+      await clickInsideApryseShadowRoot(viewerElement);
 
-      writeApryseDebugLog('exportEditedPdf-after-stopContentBoxEditing-1', {
-        editedRects: editedRectsRef.current,
-        annotations: getAnnotationManagerDebugData(instance),
-      })
-
-      await clickInsideApryseShadowRoot(viewerElement)
-
-      writeApryseDebugLog('exportEditedPdf-after-shadow-click', {
-        editedRects: editedRectsRef.current,
-        annotations: getAnnotationManagerDebugData(instance),
-      })
-
-      await stopAllContentBoxEditing(instance)
-
-      writeApryseDebugLog('exportEditedPdf-after-stopContentBoxEditing-2', {
-        editedRects: editedRectsRef.current,
-        annotations: getAnnotationManagerDebugData(instance),
-      })
+      await stopAllContentBoxEditing(instance);
 
       const liveContentEditRects = collectContentEditAnnotationRects(instance)
       const finalEditedRects = dedupeEditedRects([
         ...editedRectsRef.current,
         ...liveContentEditRects,
-      ])
+      ]);
       const degradedAnnotationIds = collectDegradedCommentAnnotationIds(
         instance,
         finalEditedRects,
-      )
+      );
 
-      editedRectsRef.current = finalEditedRects
-      skipNextEditExitCommentRestoreRef.current = true
-      lastDegradedAnnotationIdsRef.current = degradedAnnotationIds
+      editedRectsRef.current = finalEditedRects;
+      skipNextEditExitCommentRestoreRef.current = true;
+      lastDegradedAnnotationIdsRef.current = degradedAnnotationIds;
 
-      writeApryseDebugLog('exportEditedPdf-before-endContentEditMode-snapshot', {
-        liveContentEditRects,
-        finalEditedRects,
-        degradedAnnotationIds,
-        annotations: getAnnotationManagerDebugData(instance),
-      })
-
-      await endContentEditMode(instance)
-
-      writeApryseDebugLog('exportEditedPdf-after-endContentEditMode', {
-        editedRects: finalEditedRects,
-        degradedAnnotationIds,
-        annotations: getAnnotationManagerDebugData(instance),
-      })
+      await endContentEditMode(instance);
 
       documentViewer.refreshAll?.()
       documentViewer.updateView?.()
@@ -2560,16 +2314,9 @@ export const AprysePdfViewer = forwardRef<
 
       const commentAnchorsBeforePdfExport = removeRenderedCommentAnchors(
         'before-pdf-export',
-      )
+      );
 
-      writeApryseDebugLog('exportEditedPdf-before-remove-comment-anchors', {
-        commentAnchorsToRemove: commentAnchorsBeforePdfExport.map(
-          (annotation: AnyAnnotation) => getAnnotationDebugData(annotation),
-        ),
-        annotationsAfterRemove: getAnnotationManagerDebugData(instance),
-      })
-
-      let fileData: ArrayBuffer
+      let fileData: ArrayBuffer;
 
       try {
         fileData = await doc.getFileData({
@@ -2579,24 +2326,11 @@ export const AprysePdfViewer = forwardRef<
         if (!isPdfEditingRef.current) {
           await renderCommentThreads(commentThreadsRef.current)
         }
-
-        writeApryseDebugLog('exportEditedPdf-after-export-cleanup', {
-          restoredCommentAnchors: !isPdfEditingRef.current,
-          threadCount: commentThreadsRef.current.length,
-          annotationsAfterExport: getAnnotationManagerDebugData(instance),
-        })
       }
 
       const file = new Blob([new Uint8Array(fileData)], {
         type: 'application/pdf',
       });
-
-      writeApryseDebugLog('exportEditedPdf-finished', {
-        editedRects: finalEditedRects,
-        degradedAnnotationIds,
-        fileSize: file.size,
-        annotationsAtFinish: getAnnotationManagerDebugData(instance),
-      })
 
       return {
         file,
