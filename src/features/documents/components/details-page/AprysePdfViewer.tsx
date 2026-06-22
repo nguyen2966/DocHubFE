@@ -1399,12 +1399,12 @@ export const AprysePdfViewer = forwardRef<
           configureLockedZoomUi(instance);
           scheduleLockedZoomEnforcement('documentLoaded');
 
-           // Let Apryse populate embedded annotations from the PDF first.
+          // Let Apryse populate embedded annotations from the PDF first.
           await waitFrame();
           await waitFrame();
           await wait(500);
 
-          if(disposed) return;
+          if (disposed) return;
 
           const threadsToRender = pendingRenderThreadsRef.current ?? commentThreadsRef.current;
           pendingRenderThreadsRef.current = null;
@@ -1638,19 +1638,16 @@ export const AprysePdfViewer = forwardRef<
 
       await stopAllContentBoxEditing(instance);
 
-      const liveContentEditRects = collectContentEditAnnotationRects(instance)
       const finalEditedRects = dedupeEditedRects([
         ...editedRectsRef.current,
-        ...liveContentEditRects,
       ]);
-      const degradedAnnotationIds = collectDegradedCommentAnnotationIds(
-        instance,
-        finalEditedRects,
-      );
+
+      const degradedAnnotationIds =
+        finalEditedRects.length > 0
+          ? collectDegradedCommentAnnotationIds(instance, finalEditedRects)
+          : [];
 
       editedRectsRef.current = finalEditedRects;
-      skipNextEditExitCommentRestoreRef.current = true;
-      lastDegradedAnnotationIdsRef.current = degradedAnnotationIds;
 
       await endContentEditMode(instance);
 
