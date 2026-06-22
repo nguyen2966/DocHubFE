@@ -1,54 +1,41 @@
-import { useEffect, useState } from 'react';
-import { isAxiosError } from 'axios';
-import { workspaceService } from '../services/workspace.service';
-import { Workspace } from '../types/workspace.type';
+import { useQuery } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
+
+import { workspaceService } from '../services/workspace.service'
+
+function getErrorStatus(error: unknown) {
+  if (!isAxiosError(error)) return null
+
+  return (
+    error.response?.status ??
+    (error.response?.data as { statusCode?: number } | undefined)
+      ?.statusCode ??
+    null
+  )
+}
 
 export function useWorkspaceDetail(workspaceId?: string) {
-  const [workspace, setWorkspace] = useState<Workspace | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [status, setStatus] = useState<number | null>(null)
+  const query = useQuery({
+    queryKey: ['workspace', workspaceId],
+    queryFn: () => workspaceService.getWorkspace(workspaceId!),
+    enabled: Boolean(workspaceId),
+    retry: false,
+    refetchOnWindowFocus: true,
+    refetchInterval: 15000,
+  })
 
-  useEffect(() => {
-    if (!workspaceId) {
-      setWorkspace(null)
-      setError('Workspace ID is missing.')
-      setStatus(404)
-      setIsLoading(false)
-      return
-    }
-
-    const fetchWorkspace = async () => {
-      setIsLoading(true)
-      setError(null)
-      setStatus(null)
-
-      try {
-        const result = await workspaceService.getWorkspace(workspaceId);
-        setWorkspace(result);
-
-      } catch (error) {
-        setWorkspace(null)
-        setError('Could not load workspace.')
-        setStatus(
-          isAxiosError(error)
-            ? error.response?.status ??
-                (error.response?.data as { statusCode?: number } | undefined)
-                  ?.statusCode ??
-                null
-            : null,
-        )
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchWorkspace()
-  }, [workspaceId])
+  const missingWorkspaceId = !workspaceId
+  const status = missingWorkspaceId ? 404 : getErrorStatus(query.error)
+  const error = missingWorkspaceId
+    ? 'Workspace ID is missing.'
+    : query.error
+      ? 'Could not load workspace.'
+      : null
 
   return {
-    workspace,
-    isLoading,
+    ...query,
+    workspace: query.data ?? null,
+    isLoading: Boolean(workspaceId) && query.isLoading,
     error,
     status,
   }

@@ -13,6 +13,8 @@ export const useDocuments = (workspaceId?: string, page = 1) => {
         limit: DOCUMENT_PAGE_LIMIT,
       }),
     enabled: Boolean(workspaceId),
+    retry: false,
+    refetchOnWindowFocus: true,
     placeholderData: (previousData) => previousData,
   })
 }

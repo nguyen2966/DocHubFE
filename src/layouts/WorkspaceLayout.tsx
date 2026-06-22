@@ -10,6 +10,7 @@ export function WorkspaceLayout() {
 
   if (isLoading) return null
   if (status === 401) return <Navigate to="/401" replace />
+  if (status === 403) return <Navigate to="/403" replace />
   if (status === 400 || status === 404) return <Navigate to="/404" replace />
   if (error) return <Navigate to="/403" replace />
 
@@ -30,7 +31,7 @@ export function WorkspaceLayout() {
 
         {/* Dynamic Route Content - Chỉnh lại padding gọn gàng, thoáng đãng */}
         <main className="flex-1 px-10 py-8 overflow-y-auto bg-white">
-          <Outlet />
+          <Outlet context={{ workspace }} />
         </main>
       </div>
     </div>

@@ -17,7 +17,7 @@ export const workspaceService = {
 
   getWorkspace(workspaceId: string) {
     return api
-      .get<{ data: Workspace }>(`/workspaces/${workspaceId}`)
+      .get<Workspace>(`/workspaces/${workspaceId}`)
       .then((res) => res.data)
   },
   createWorkspace(payload: CreateWorkspacePayload) {

@@ -62,7 +62,7 @@ export function ShareUserSearchDropdown({
 
                   {!user.isRegistered && (
                     <span className="shrink-0 text-[16px] font-semibold leading-5 text-red-500">
-                      Pending user
+                      (Pending user)
                     </span>
                   )}
 
