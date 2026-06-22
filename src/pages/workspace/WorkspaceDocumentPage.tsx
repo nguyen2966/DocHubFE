@@ -1,6 +1,7 @@
 import type { ChangeEvent } from 'react'
 import { useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { isAxiosError } from 'axios'
 
 import { DocumentEmptyState } from '../../features/documents/components/create-document/DocumentEmptyState'
 import { UploadProgressCard } from '../../features/documents/components/create-document/UploadProgressCard'
@@ -11,6 +12,17 @@ import { useCreateMarkdownDocument } from '../../features/documents/hooks/useCre
 import { useDocuments } from '../../features/documents/hooks/useDocument'
 import { useUploadPdfWithProgress } from '../../features/documents/hooks/useUploadPdfWithProgress'
 import { Pagination } from '../../shared/components/Pagination'
+
+function getErrorStatus(error: unknown) {
+  if (!isAxiosError(error)) return null
+
+  return (
+    error.response?.status ??
+    (error.response?.data as { statusCode?: number } | undefined)
+      ?.statusCode ??
+    null
+  )
+}
 
 export function WorkspaceDocumentsPage() {
   const { workspaceId } = useParams()
@@ -25,6 +37,7 @@ export function WorkspaceDocumentsPage() {
   const documentsQuery = useDocuments(workspaceId, page)
   const documents = documentsQuery.data?.data ?? []
   const meta = documentsQuery.data?.meta
+  const documentsErrorStatus = getErrorStatus(documentsQuery.error)
 
   const createDocumentMutation = useCreateMarkdownDocument(workspaceId!)
   const {
@@ -104,8 +117,20 @@ export function WorkspaceDocumentsPage() {
     return <div className="text-sm text-red-500">Workspace ID is missing.</div>
   }
 
+  if (documentsErrorStatus === 401) return <Navigate to="/401" replace />
+  if (documentsErrorStatus === 403) return <Navigate to="/403" replace />
+  if (documentsErrorStatus === 404) return <Navigate to="/404" replace />
+
   if (documentsQuery.isLoading) {
     return <div className="text-sm text-stone-500">Loading documents...</div>
+  }
+
+  if (documentsQuery.isError) {
+    return (
+      <div className="text-sm text-red-500">
+        Could not load documents. Please try again.
+      </div>
+    )
   }
 
   return (
