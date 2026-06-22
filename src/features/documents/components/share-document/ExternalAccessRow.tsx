@@ -1,8 +1,8 @@
-import type { DocumentExternalUser, ShareRole } from '../../types/document.type'
-import { useUpdateDocumentUserRole } from '../../hooks/useUpdateDocumentUserRole'
-import { useRemoveDocumentAccess } from '../../hooks/useRemoveDocumentAccess'
-import { ShareRoleSelect } from './ShareRoleSelect'
-import Avatar from '../../../../assets/avatar.png'
+import type { DocumentExternalUser, ShareRole } from '../../types/document.type';
+import { useUpdateDocumentUserRole } from '../../hooks/useUpdateDocumentUserRole';
+import { useRemoveDocumentAccess } from '../../hooks/useRemoveDocumentAccess';
+import { ShareRoleSelect } from './ShareRoleSelect';
+import Avatar from '../../../../assets/avatar.png';
 
 interface Props {
   user: DocumentExternalUser

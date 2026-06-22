@@ -14,7 +14,7 @@ import { WorkspaceDocumentsPage } from './pages/workspace/WorkspaceDocumentPage'
 import { WorkspaceMembersPage } from './pages/workspace/WorkspaceMemberPage';
 import { WorkspaceActivityPage } from './pages/workspace/WorkspaceActivityPage';
 import { WorkspaceSettingsPage } from './pages/workspace/WorkspaceSettingPage';
-import { AcceptInvitationPage } from './layouts/AcceptInvitationPage';
+import { AcceptInvitationPage } from './pages/accept-invitation/AcceptInvitationPage';
 import { ForrbiddenPage } from './pages/error/ForbiddenPage';
 import { UnAuthorizedPage } from './pages/error/UnAuthorizedPage';
 import { RequireWorkspacePermission } from './shared/components/routes/RequiredRoleRoute';
@@ -23,7 +23,6 @@ import { NotfoundPage } from './pages/error/NotfoundPage';
 import { WorkspaceDocumentDetailPage } from './pages/document-details/DocumentDetailPage';
 import { SharedWithMePage } from './pages/share-with-me/ShareWithMePage';
 import { SharedDocumentDetailPage } from './pages/share-with-me-details/SharedDocumentDetail';
-import { CommentUiTestPage } from './pages/dev/CommentTest';
 
 function App() {
   return (
@@ -100,8 +99,6 @@ function App() {
           path="/shared-with-me/documents/:documentId"
           element={<SharedDocumentDetailPage />}
         />
-
-        <Route path="/__dev/comment-ui" element={<CommentUiTestPage />} />
 
         <Route path="/401" element={<UnAuthorizedPage />} />
         <Route path="/403" element={<ForrbiddenPage />} />

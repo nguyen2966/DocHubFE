@@ -1,10 +1,8 @@
-// src/pages/invitation/AcceptInvitationPage.tsx
-
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import api from '../shared/lib/axios'
-import { authService } from '../features/auth/services/auth.service'
-import { useAuthStore } from '../shared/hooks/useAuthStore'
+import api from '../../shared/lib/axios'
+import { authService } from '../../features/auth/services/auth.service'
+import { useAuthStore } from '../../shared/hooks/useAuthStore'
 
 export function AcceptInvitationPage() {
   const { token } = useParams()
