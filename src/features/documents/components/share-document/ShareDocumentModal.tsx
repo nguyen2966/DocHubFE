@@ -29,7 +29,7 @@ export function ShareDocumentModal({
 
   return (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-    <div className="relative flex max-h-[calc(100vh-3rem)] w-full max-w-[550px] flex-col rounded-lg border border-stone-200 bg-white shadow-xl">
+    <div className="relative flex max-h-[560px] w-full max-w-[480px] flex-col rounded-lg border border-stone-200 bg-white shadow-xl">
       <button
         type="button"
         onClick={onClose}
@@ -38,7 +38,7 @@ export function ShareDocumentModal({
         <X size={16} />
       </button>
 
-      <div className="min-h-0 px-4 pt-4 pb-2">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-2">
         <h2 className="pr-8 text-base font-normal text-stone-950">
           Share{' '}
           <span className="font-semibold">

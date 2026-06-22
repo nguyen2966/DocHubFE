@@ -8,8 +8,13 @@ interface Props {
 
 export function ShareSelectedUserPill({ user, onRemove }: Props) {
   return (
-    <span className="inline-flex max-w-[220px] items-center gap-2 rounded-full bg-stone-100 px-3 py-1 text-sm text-stone-700">
-      <span className="truncate">{user.fullName || user.email}</span>
+    <span className="inline-flex max-w-[260px] items-center gap-2 rounded-full bg-stone-100 px-3 py-1 text-sm text-stone-700">
+      <span className="min-w-0 truncate">{user.fullName || user.email}</span>
+      {!user.isRegistered && (
+        <span className="shrink-0 text-xs font-semibold text-red-500">
+          Pending user
+        </span>
+      )}
 
       <button
         type="button"

@@ -1,4 +1,4 @@
-import { BuildingOffice } from '@phosphor-icons/react'
+import Avatar from '../../../../assets/avatar.png'
 
 interface Props {
   workspaceName: string
@@ -9,9 +9,11 @@ export function WorkspaceAccessRow({ workspaceName, memberCount }: Props) {
   return (
     <div className="flex items-center justify-between py-1.5">
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-stone-100 text-stone-500">
-          <BuildingOffice size={18} />
-        </div>
+        <img
+          src={Avatar}
+          alt=""
+          className="h-9 w-9 shrink-0 rounded-full object-cover"
+        />
 
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-stone-950">

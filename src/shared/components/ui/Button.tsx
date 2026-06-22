@@ -16,6 +16,7 @@ export function Button({ children, onClick, disabled, className = '', ...props }
         disabled
           ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
           : 'bg-stone-900 text-white hover:bg-stone-800',
+        className,
       ].join(' ')}
       {...props}
     >
