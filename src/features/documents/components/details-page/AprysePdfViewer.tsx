@@ -29,12 +29,9 @@ import type {
   TextSelection,
 } from '../../types/apryse.types';
 import {
-  APRYSE_ZOOM_UI_ELEMENTS,
-  COMMENT_MARKER_OVERLAY_GAP,
-  COMMENT_MARKER_SIZE,
-  LOCKED_PDF_ZOOM,
-  SELECTION_ACTION_OVERLAY_GAP,
-  ZOOM_LOCK_ENABLED,
+  APRYSE_ZOOM_UI_ELEMENTS, COMMENT_MARKER_OVERLAY_GAP, COMMENT_MARKER_SIZE,
+  LOCKED_PDF_ZOOM, SELECTION_ACTION_OVERLAY_GAP, ZOOM_LOCK_ENABLED, DOC_HUB_KIND_KEY,
+  DOC_HUB_MANAGED_KEY, COMMENT_ANCHOR_TYPE_KEY, COMMENT_ANCHOR_TYPE
 } from '../../constants/apryse.constants';
 import {
   clickInsideApryseShadowRoot,
@@ -136,7 +133,77 @@ export const AprysePdfViewer = forwardRef<
   } | null>(null)
   const [commentMarkerOverlays, setCommentMarkerOverlays] = useState<
     CommentMarkerOverlay[]
-  >([])
+  >([]);
+
+  async function removeEmbeddedDocHubCommentAnnotationsBeforeRender(
+    threads: CommentThread[],
+  ) {
+    const instance = instanceRef.current
+    if (!instance) return
+
+    const { annotationManager, documentViewer } = instance.Core
+
+    const threadIds = new Set(
+      threads.map((thread) => thread.annotation._id),
+    )
+
+    const apryseAnnotationIds = new Set(
+      threads
+        .map((thread) => thread.annotation.apryseAnnotationId)
+        .filter((id): id is string => Boolean(id)),
+    )
+
+    const isEmbeddedDocHubCommentAnnotation = (annotation: AnyAnnotation) => {
+      const threadId = getThreadIdFromAnnotation(annotation)
+
+      const kind = annotation.getCustomData?.(DOC_HUB_KIND_KEY)
+      const managed = annotation.getCustomData?.(DOC_HUB_MANAGED_KEY)
+      const anchorType = annotation.getCustomData?.(COMMENT_ANCHOR_TYPE_KEY)
+
+      if (threadId && threadIds.has(threadId)) return true
+      if (apryseAnnotationIds.has(annotation.Id)) return true
+
+      if (managed === 'true') return true
+      if (anchorType === COMMENT_ANCHOR_TYPE) return true
+
+      if (
+        typeof kind === 'string' &&
+        kind.toLowerCase().includes('comment')
+      ) {
+        return true
+      }
+
+      // Do not rely on Subject alone unless you really need a last fallback.
+      // Subject === "Comment" is too broad and can delete unrelated comments.
+      return false
+    }
+
+    for (let pass = 0; pass < 3; pass += 1) {
+      const embeddedAnnotations = annotationManager
+        .getAnnotationsList()
+        .filter((annotation: AnyAnnotation) =>
+          isEmbeddedDocHubCommentAnnotation(annotation),
+        )
+
+      if (embeddedAnnotations.length === 0) return
+
+      annotationManager.deselectAllAnnotations?.()
+
+      await Promise.resolve(
+        annotationManager.deleteAnnotations(embeddedAnnotations, {
+          imported: true,
+          force: true,
+        } as any),
+      )
+
+      documentViewer.refreshAll?.()
+      documentViewer.updateView?.()
+
+      await waitFrame()
+      await waitFrame()
+      await wait(100)
+    }
+  }
 
   function isCommentOverlayHidden() {
     return Boolean(commentsDisabledRef.current || isPdfEditingRef.current)
@@ -396,24 +463,6 @@ export const AprysePdfViewer = forwardRef<
     return null
   }
 
-  function warnInvalidAvatarMarkerSource(
-    marker: PageBoundAvatarMarker,
-    reason: string,
-    pageSize: { width: number; height: number } | null,
-  ) {
-    console.warn(
-      '[DocHub marker] Invalid page anchor source; refusing to render marker',
-      {
-        annotationId: marker.annotationId,
-        pageNumber: marker.pageNumber,
-        anchor: marker.anchor,
-        pageSize,
-        source: marker.source,
-        reason,
-      },
-    )
-  }
-
   function isValidPageBoundAvatarMarker(marker: PageBoundAvatarMarker) {
     const instance = instanceRef.current
     const pageCount = instance?.Core.documentViewer.getPageCount?.() ?? null
@@ -422,12 +471,10 @@ export const AprysePdfViewer = forwardRef<
     const pageSize = getPageSize(pageNumber)
 
     if (!values.every((value) => Number.isFinite(value))) {
-      warnInvalidAvatarMarkerSource(marker, 'non-finite-page-anchor', pageSize)
       return false
     }
 
     if (pageNumber < 1 || (typeof pageCount === 'number' && pageNumber > pageCount)) {
-      warnInvalidAvatarMarkerSource(marker, 'invalid-page-number', pageSize)
       return false
     }
 
@@ -441,7 +488,6 @@ export const AprysePdfViewer = forwardRef<
       anchor.y > pageSize.height + margin
 
     if (outOfPageRange) {
-      warnInvalidAvatarMarkerSource(marker, 'anchor-outside-page-range', pageSize)
       return false
     }
 
@@ -1353,9 +1399,18 @@ export const AprysePdfViewer = forwardRef<
           configureLockedZoomUi(instance);
           scheduleLockedZoomEnforcement('documentLoaded');
 
-          const threadsToRender =
-            pendingRenderThreadsRef.current ?? commentThreadsRef.current
+          // Let Apryse populate embedded annotations from the PDF first.
+          await waitFrame();
+          await waitFrame();
+          await wait(500);
+
+          if (disposed) return;
+
+          const threadsToRender = pendingRenderThreadsRef.current ?? commentThreadsRef.current;
           pendingRenderThreadsRef.current = null;
+
+          await removeEmbeddedDocHubCommentAnnotationsBeforeRender(threadsToRender);
+
 
           await renderCommentThreads(threadsToRender);
           bindCommentOverlayPositionListeners();
@@ -1583,19 +1638,16 @@ export const AprysePdfViewer = forwardRef<
 
       await stopAllContentBoxEditing(instance);
 
-      const liveContentEditRects = collectContentEditAnnotationRects(instance)
       const finalEditedRects = dedupeEditedRects([
         ...editedRectsRef.current,
-        ...liveContentEditRects,
       ]);
-      const degradedAnnotationIds = collectDegradedCommentAnnotationIds(
-        instance,
-        finalEditedRects,
-      );
+
+      const degradedAnnotationIds =
+        finalEditedRects.length > 0
+          ? collectDegradedCommentAnnotationIds(instance, finalEditedRects)
+          : [];
 
       editedRectsRef.current = finalEditedRects;
-      skipNextEditExitCommentRestoreRef.current = true;
-      lastDegradedAnnotationIdsRef.current = degradedAnnotationIds;
 
       await endContentEditMode(instance);
 

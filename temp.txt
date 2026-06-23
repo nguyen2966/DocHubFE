@@ -1,3 +1,80 @@
-<a href="http://localhost:5173/verify-email#token=78fed47506a5e1885a1f435b5f5ef95ae230b3c70cb813259cc4d37b7c5414fe" target="_blank" data-saferedirecturl="https://www.google.com/url?q=http://localhost:5173/verify-email%23token%3D78fed47506a5e1885a1f435b5f5ef95ae230b3c70cb813259cc4d37b7c5414fe&amp;source=gmail&amp;ust=1782191009305000&amp;usg=AOvVaw0unS5YQx37oOeSgjVPoj4d">
-            <button style="background-color:green;color:white;padding:10px 10px">Verify</button>
-          </a>
+Problems Summary
+No source code was modified. I did generate eslint-report.json while inspecting lint output; it is currently untracked.
+Checks run:
+npm run typecheck: missing script.
+npx tsc --noEmit: failed because typescript is not installed locally and network install was blocked.
+npm run build: passed, with a large bundle warning.
+ESLint direct run: produced 23k+ errors, but almost all are from vendored Apryse files in public/webviewer/lib; current ESLint config does not lint TS/TSX.
+P0 Runtime-Breaking
+1. [src/shared/lib/axios.ts (line 16)](E:/DSV_INTERN_PROJECT/FrontEnd/doc-hub-fe/src/shared/lib/axios.ts:16)
+Error: Global 401 interceptor refreshes without any skip-refresh guard.
+Root cause: api.interceptors.response retries every 401 unless _retry is set. Auth/public endpoints can accidentally enter refresh logic.
+Device/OS impact: Not OS-specific; affects all browsers. Can cause bad auth UX, unexpected logout, or retry loops.
+Recommended fix: Add a typed skip flag such as _skipAuthRefresh?: boolean, skip refresh for auth/public endpoints, and use a separate auth client where appropriate.
+2. Auth/session flow is not covered by a real typecheck
+Error: Build passes, but there is no typecheck script, no tsconfig, and no local typescript dependency.
+Root cause: Vite transpiles TSX without full TypeScript validation.
+Device/OS impact: Not OS-specific, but runtime bugs can ship unnoticed.
+Recommended fix: Add typescript, tsconfig.json, and npm run typecheck.
+P1 TypeScript / Integration Issues
+1. [src/features/workspaces/services/workspace.service.ts (line 23)](E:/DSV_INTERN_PROJECT/FrontEnd/doc-hub-fe/src/features/workspaces/services/workspace.service.ts:23)
+Error: CreateWorkspacePayload is used but not imported.
+2. [src/features/workspaces/services/workspace.service.ts (line 27)](E:/DSV_INTERN_PROJECT/FrontEnd/doc-hub-fe/src/features/workspaces/services/workspace.service.ts:27)
+Error: UpdateWorkspacePayload is used but not imported.
+Root cause: Workspace service typing was refactored but payload type imports were missed.
+Device/OS impact: Not OS-specific; TypeScript correctness issue.
+Recommended fix: Import both payload types from workspace.type.ts.
+3. [src/pages/share-with-me-details/SharedDocumentDetail.tsx (line 68)](E:/DSV_INTERN_PROJECT/FrontEnd/doc-hub-fe/src/pages/share-with-me-details/SharedDocumentDetail.tsx:68)
+Error: DocumentViewerShell is rendered with only document.
+Root cause: DocumentViewerShell now expects editor/viewer props such as isPdfEditing and viewerRef.
+Device/OS impact: Not OS-specific. Could break shared-document viewing if required props are accessed.
+Recommended fix: Pass read-only viewer props, or create a dedicated read-only shell.
+4. [src/shared/components/SideBar.tsx (line 13)](E:/DSV_INTERN_PROJECT/FrontEnd/doc-hub-fe/src/shared/components/SideBar.tsx:13)
+Error: Destructured props are untyped.
+Root cause: WorkspaceSidebar has no props interface after workspace permission refactors.
+Device/OS impact: Not OS-specific.
+Recommended fix: Add a WorkspaceSidebarProps type for workspace, permissions, and workspaceId.
+5. [src/shared/lib/api.test.ts (line 36)](E:/DSV_INTERN_PROJECT/FrontEnd/doc-hub-fe/src/shared/lib/api.test.ts:36)
+Error: authService.refreshToken mock returns { success: true }.
+Root cause: Mock response likely no longer matches the real refresh API return shape.
+Device/OS impact: Test-only.
+Recommended fix: Return an Axios-like response or update the service/mock contract consistently.
+6. [src/features/auth/components/VerifyEmailNotice.tsx (line 31)](E:/DSV_INTERN_PROJECT/FrontEnd/doc-hub-fe/src/features/auth/components/VerifyEmailNotice.tsx:31)
+Error: location.state?.email is accessed without explicit state typing.
+Root cause: React Router location state is not narrowed.
+Device/OS impact: Not OS-specific.
+Recommended fix: Cast/narrow location.state to { email?: string } | null.
+P2 Cleanup
+1. [eslint.config.js](E:/DSV_INTERN_PROJECT/FrontEnd/doc-hub-fe/eslint.config.js)
+Error: ESLint scans vendored Apryse JS and ignores TS/TSX.
+Root cause: Only dist is ignored, and config targets **/*.{js,jsx}.
+Recommended fix: Ignore public/webviewer/**; add TypeScript ESLint support.
+2. [src/shared/components/SideBar.tsx (line 7)](E:/DSV_INTERN_PROJECT/FrontEnd/doc-hub-fe/src/shared/components/SideBar.tsx:7)
+Error: CaretDown import appears unused.
+Root cause: Stale import after UI changes.
+Recommended fix: Remove unused import.
+3. [src/pages/error/ForbiddenPage.tsx (line 5)](E:/DSV_INTERN_PROJECT/FrontEnd/doc-hub-fe/src/pages/error/ForbiddenPage.tsx:5)
+Error: Component is named ForrbiddenPage.
+Root cause: Typo preserved by matching import in App.tsx.
+Recommended fix: Rename to ForbiddenPage and update imports.
+4. [src/layouts/AuthLayout.tsx (line 1)](E:/DSV_INTERN_PROJECT/FrontEnd/doc-hub-fe/src/layouts/AuthLayout.tsx:1)
+Error: ReactNode imported as a runtime import.
+Root cause: Should be type-only in stricter TS configs.
+Recommended fix: Use import type { ReactNode } from 'react'.
+5. [src/features/auth/components/VerifyEmailNotice.tsx (line 116)](E:/DSV_INTERN_PROJECT/FrontEnd/doc-hub-fe/src/features/auth/components/VerifyEmailNotice.tsx:116)
+Error: h-100 w-100 may not be valid Tailwind sizing.
+Root cause: Non-standard spacing class unless configured.
+Recommended fix: Use explicit arbitrary values or configured spacing tokens.
+Cross-File Patterns
+The biggest blocker is tooling: the project builds, but there is no real TypeScript check in scripts or dependencies.
+ESLint output is currently noisy because vendored Apryse files are linted while TSX app files are not.
+Workspace detail/API refactor is mostly in place: getWorkspace() now returns Workspace directly.
+The previous document row action menu issue appears addressed; current code should use lifted state and avoid multiple open menus.
+The axios refresh behavior still needs a clear skip-refresh strategy.
+Suggested Fix Order
+Add real TypeScript tooling: typescript, tsconfig.json, and npm run typecheck.
+Fix auth/axios refresh skip behavior.
+Fix concrete TS integration errors: workspace payload imports, shared document viewer props, sidebar prop typing.
+Fix test mock response shape.
+Clean ESLint config so it ignores Apryse vendor files and checks TS/TSX.
+Remove unused imports, typo names, stale comments, and minor Tailwind/accessibility issues.

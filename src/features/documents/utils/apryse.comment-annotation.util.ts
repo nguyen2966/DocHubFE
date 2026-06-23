@@ -108,6 +108,14 @@ export function setHiddenPointAnchorStyle(
 ) {
   const { Annotations } = instance.Core
 
+  const transparentColor = new Annotations.Color(255, 255, 255, 0)
+
+  annotation.Opacity = 0
+  annotation.StrokeThickness = 0
+  annotation.StrokeColor = transparentColor
+  annotation.FillColor = transparentColor
+  annotation.TextColor = transparentColor
+
   annotation.NoMove = true
   annotation.NoResize = true
   annotation.NoDelete = true
@@ -115,14 +123,13 @@ export function setHiddenPointAnchorStyle(
   annotation.ReadOnly = true
   annotation.Printable = false
 
-  annotation.Opacity = 0
-
-  const transparentColor = new Annotations.Color(255, 255, 255, 0)
-
-  annotation.StrokeColor = transparentColor
-  annotation.FillColor = transparentColor
-  annotation.TextColor = transparentColor
+  // Extra Apryse flags, if supported by this annotation type
+  annotation.Hidden = true
+  annotation.NoView = true
+  annotation.Invisible = true
+  annotation.Listable = false
 
   annotation.setCustomData?.('docHubCommentAnchor', 'true')
   annotation.setCustomData?.('docHubHiddenAnchor', 'true')
+  annotation.setCustomData?.('docHubVisualState', 'point')
 }
