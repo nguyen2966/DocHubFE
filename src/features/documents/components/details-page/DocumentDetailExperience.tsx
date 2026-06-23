@@ -4,7 +4,7 @@ import { type ReactNode, useMemo, useRef, useState } from 'react'
 
 import { CommentComposer } from '../../../comments/components/CommentComposer'
 import { CommentPanel } from '../../../comments/components/CommentPanel'
-import { CommentThreadPreviewPopover } from '../../../comments/components/CommentThreadPreviewPopover'
+import { CommentThreadPreviewPopover } from '../../../comments/components/CommentThreadPreviewPopOver'
 import { CommentThreadPopover } from '../../../comments/components/CommentThreadPopover'
 import { DeleteThreadConfirmModal } from '../../../comments/components/DeleteThreadConfirmModal'
 import { DeleteCommentConfirmModal } from '../../../comments/components/DeleteCommentConfirmModal'

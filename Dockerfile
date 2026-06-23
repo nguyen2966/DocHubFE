@@ -10,9 +10,9 @@ RUN npm ci
 
 COPY . .
 
-RUN mkdir -p public/lib/webviewer \
-  && cp -R node_modules/@pdftron/webviewer/public/. public/lib/webviewer/
+RUN mkdir -p public/webviewer/lib \
+  && cp -R node_modules/@pdftron/webviewer/public/. public/webviewer/lib/
 
 EXPOSE 5173
 
-CMD ["sh", "-c", "mkdir -p public/lib/webviewer && cp -R node_modules/@pdftron/webviewer/public/. public/lib/webviewer/ && npm run dev -- --host 0.0.0.0"]
+CMD ["sh", "-c", "mkdir -p public/webviewer/lib && cp -R node_modules/@pdftron/webviewer/public/. public/webviewer/lib/ && npm run dev -- --host 0.0.0.0"]
