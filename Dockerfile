@@ -1,11 +1,8 @@
-FROM node:22-bookworm-slim
+FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
 
-ENV NODE_ENV=development
-
 COPY package*.json ./
-
 RUN npm ci
 
 COPY . .
