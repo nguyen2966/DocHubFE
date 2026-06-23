@@ -6,7 +6,7 @@ import {
   CreateWorkspaceFormValues,
 } from '../schemas/workspace.schema';
 import { useCreateWorkspace } from '../hooks/useCreateWorkspace';
-import { Input } from '../../auth/components/ui/input';
+import { Input } from '../../auth/components/ui/Input';
 import { FormError } from '../../auth/components/ui/FormError';
 import { SpinnerIcon } from '../../../shared/components/ui/icons';
 

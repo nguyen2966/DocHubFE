@@ -5,7 +5,7 @@ import {
   TextT,
 } from '@phosphor-icons/react';
 
-import { Button } from '../../../auth/components/ui/button';
+import { Button } from '../../../auth/components/ui/Button';
 
 interface CreateDocumentButtonProps {
   onUploadPdf: () => void
