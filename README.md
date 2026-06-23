@@ -1,4 +1,4 @@
-# FOLIO Frontend README
+# FOLIO
 
 ## 1. Overview
 
