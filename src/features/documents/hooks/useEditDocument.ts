@@ -31,14 +31,7 @@ export const useEditPdf = (workspaceId: string) => {
       ),
 
     onSuccess: (updatedDocument, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ['documents', workspaceId],
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ['document-detail', workspaceId, updatedDocument._id],
-      })
-
+      
       queryClient.invalidateQueries({
         queryKey: commentThreadKeys.list(workspaceId, variables.documentId),
       })

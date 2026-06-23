@@ -1,5 +1,6 @@
 import { ArrowLeft } from '@phosphor-icons/react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { isAxiosError } from 'axios'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 
 import { DocumentDetailExperience } from '../../features/documents/components/details-page/DocumentDetailExperience'
 import { useSharedDocumentDetail } from '../../features/documents/hooks/useSharedDocumentDetail'
@@ -13,6 +14,7 @@ export function SharedDocumentDetailPage() {
     data: document,
     isLoading,
     isError,
+    error,
   } = useSharedDocumentDetail(documentId)
 
   if (isLoading) {
@@ -24,6 +26,18 @@ export function SharedDocumentDetailPage() {
         </main>
       </div>
     )
+  }
+
+  if (isError) {
+    const status = getErrorStatus(error)
+
+    if (status === 401) {
+      return <Navigate to="/401" replace />
+    }
+
+    if (status === 403) {
+      return <Navigate to="/403" replace />
+    }
   }
 
   if (isError || !document || !documentId) {
@@ -53,5 +67,16 @@ export function SharedDocumentDetailPage() {
         </button>
       }
     />
+  )
+}
+
+function getErrorStatus(error: unknown) {
+  if (!isAxiosError(error)) return null
+
+  return (
+    error.response?.status ??
+    (error.response?.data as { statusCode?: number } | undefined)
+      ?.statusCode ??
+    null
   )
 }
