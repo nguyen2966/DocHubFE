@@ -280,8 +280,6 @@ export function DocumentDetailExperience({
 
   const openFullThreadFromPreview = (thread: CommentThread) => {
     const annotationId = thread.annotation._id
-    const previewPosition = hoverPreview?.position ?? null
-
     closeHoverPreview()
     setSelectedThreadId(annotationId)
     setReplyingToCommentId(null)
@@ -290,7 +288,7 @@ export function DocumentDetailExperience({
     setFloatingThreadId(annotationId)
     setFloatingThreadSource('anchor')
     setFloatingThreadPosition(
-      getViewerRightPopoverPosition(viewerFrameRef.current, previewPosition),
+      getViewerRightPopoverPosition(viewerFrameRef.current),
     )
   }
 
@@ -360,7 +358,9 @@ export function DocumentDetailExperience({
     closeHoverPreview()
     setFloatingThreadId(annotationId)
     setFloatingThreadSource('anchor')
-    setFloatingThreadPosition(getAnchorPopoverPosition(clientPosition))
+    setFloatingThreadPosition(
+      getViewerRightPopoverPosition(viewerFrameRef.current),
+    )
   }
 
   const handleSidebarThreadClick = async (thread: CommentThread) => {
