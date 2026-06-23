@@ -1723,8 +1723,6 @@ export const AprysePdfViewer = forwardRef<
             hiddenAnnotationId={hiddenCommentAvatarMarkerId}
             onAddComment={createPendingCommentAnchor}
             onMarkerClick={handleOverlayMarkerClick}
-            onMarkerHover={handleOverlayMarkerHover}
-            onMarkerHoverEnd={handleOverlayMarkerHoverEnd}
             onMarkerElementChange={handleMarkerElementChange}
           />
         </div>

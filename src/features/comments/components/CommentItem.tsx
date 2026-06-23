@@ -5,6 +5,7 @@ import {
   Trash,
 } from '@phosphor-icons/react'
 import { FormEvent, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 import type { Comment, CommentThread } from '../utils/comment-tree.util'
 import {
@@ -44,9 +45,16 @@ export function CommentItem({
   onRequestDeleteThread,
 }: CommentItemProps) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [menuPosition, setMenuPosition] = useState<{
+    left: number
+    top: number
+    maxHeight: number
+  } | null>(null)
   const [draft, setDraft] = useState(comment.body)
   const [draftError, setDraftError] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const menuPortalRef = useRef<HTMLDivElement | null>(null)
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null)
   const editFormRef = useRef<HTMLFormElement | null>(null)
 
   const deleted = isCommentDeleted(comment)
@@ -57,6 +65,42 @@ export function CommentItem({
   const showDeleteThread = Boolean(isRoot && canDeleteWholeThread)
   const showReply = canReplyToComment(comment)
 
+  const updateMenuPosition = () => {
+    const buttonElement = menuButtonRef.current
+    if (!buttonElement) return
+
+    const rect = buttonElement.getBoundingClientRect()
+    const menuWidth = 160
+    const margin = 12
+    const itemCount = [
+      showReply,
+      showEdit,
+      showDeleteComment,
+      showDeleteThread,
+    ].filter(Boolean).length
+    const estimatedMenuHeight = itemCount * 34 + 8
+    const preferredTop = rect.bottom + 4
+    const shouldOpenAbove =
+      preferredTop + estimatedMenuHeight > window.innerHeight - margin
+    const top = shouldOpenAbove
+      ? Math.max(margin, rect.top - estimatedMenuHeight - 4)
+      : preferredTop
+
+    setMenuPosition({
+      left: Math.max(
+        margin,
+        Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - margin),
+      ),
+      top,
+      maxHeight: Math.max(
+        96,
+        shouldOpenAbove
+          ? rect.top - margin - 4
+          : window.innerHeight - preferredTop - margin,
+      ),
+    })
+  }
+
   useEffect(() => {
     setDraft(comment.body)
     setDraftError(null)
@@ -65,15 +109,27 @@ export function CommentItem({
   useEffect(() => {
     if (!menuOpen) return
 
+    updateMenuPosition()
+
     const handlePointerDown = (event: PointerEvent) => {
-      if (!menuRef.current) return
-      if (menuRef.current.contains(event.target as Node)) return
+      const target = event.target as Node
+      if (menuRef.current?.contains(target)) return
+      if (menuPortalRef.current?.contains(target)) return
       setMenuOpen(false)
     }
 
+    const handleReposition = () => updateMenuPosition()
+
     document.addEventListener('pointerdown', handlePointerDown)
-    return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [menuOpen])
+    window.addEventListener('resize', handleReposition)
+    window.addEventListener('scroll', handleReposition, true)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      window.removeEventListener('resize', handleReposition)
+      window.removeEventListener('scroll', handleReposition, true)
+    }
+  }, [menuOpen, showDeleteComment, showDeleteThread, showEdit, showReply])
 
   useEffect(() => {
     if (!editing) return
@@ -135,6 +191,7 @@ export function CommentItem({
           {!deleted && (showEdit || showDeleteComment || showDeleteThread || showReply) && (
             <div ref={menuRef} className="relative shrink-0">
               <button
+                ref={menuButtonRef}
                 type="button"
                 onClick={() => setMenuOpen((value) => !value)}
                 className="rounded-md p-1 text-stone-400 opacity-0 transition hover:bg-stone-100 hover:text-stone-700 group-hover:opacity-100"
@@ -142,8 +199,17 @@ export function CommentItem({
                 <DotsThree size={16} weight="bold" />
               </button>
 
-              {menuOpen && (
-                <div className="absolute right-0 top-7 z-50 w-40 overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-xl">
+              {menuOpen && menuPosition && createPortal(
+                <div
+                  ref={menuPortalRef}
+                  data-comment-action-menu
+                  className="fixed z-[90] w-40 overflow-y-auto rounded-lg border border-stone-200 bg-white py-1 shadow-xl"
+                  style={{
+                    left: menuPosition.left,
+                    top: menuPosition.top,
+                    maxHeight: menuPosition.maxHeight,
+                  }}
+                >
                   {showReply && (
                     <button
                       type="button"
@@ -199,7 +265,8 @@ export function CommentItem({
                       Delete thread
                     </button>
                   )}
-                </div>
+                </div>,
+                document.body,
               )}
             </div>
           )}
