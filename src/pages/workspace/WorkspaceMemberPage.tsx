@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { UserPlus } from '@phosphor-icons/react'
 import { InviteModal } from '../../features/workspaces/components/InviteModal'
@@ -6,6 +6,7 @@ import { workspaceService } from '../../features/workspaces/services/workspace.s
 import { Member, WorkspaceRole } from '../../features/workspaces/types/workspace.type'
 import Avatar from '../../assets/avatar.png';
 import { useWorkspaceDetail } from '../../features/workspaces/hooks/useWorkspaceDetail'
+import { useWorkspaceMembers } from '../../features/workspaces/hooks/useWorkspaceMembers'
 import { DeleteConfirmModal } from '../../shared/components/ui/DeleteConfirmModal'
 import { can } from '../../helper/can-permission'
 import { errorToast, successDeleteToast, successToast } from '../../shared/components/ui/Toast';
@@ -27,31 +28,22 @@ export function WorkspaceMembersPage() {
   const canChangeRole = can(permissions, 'workspace:change_member_role')
   const canRemove     = can(permissions, 'workspace:remove_member')
 
-  const [members, setMembers]               = useState<Member[]>([])
-  const [isLoading, setIsLoading]           = useState(true)
   const [showInvite, setShowInvite]         = useState(false)
   const [roleMenuId, setRoleMenuId]         = useState<string | null>(null)
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting]         = useState(false)
 
-  const fetchMembers = useCallback(async () => {
-    if (!workspaceId) return
-    setIsLoading(true)
-    try {
-      const data = await workspaceService.getMembers(workspaceId)
-      setMembers(data)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [workspaceId])
-
-  useEffect(() => { fetchMembers() }, [fetchMembers])
+  const {
+    data: members = [],
+    isLoading,
+    refetch: refetchMembers,
+  } = useWorkspaceMembers(workspaceId)
 
   const handleRoleChange = async (userId: string, role: WorkspaceRole) => {
     if (!workspaceId) return
     try {
       await workspaceService.changeMemberRole(workspaceId, userId, role)
-      await fetchMembers()
+      await refetchMembers()
       successToast('Role updated successfully')
     } catch {
       errorToast('Failed to update role')
@@ -64,7 +56,7 @@ export function WorkspaceMembersPage() {
     setIsDeleting(true)
     try {
       await workspaceService.removeMember(workspaceId, pendingRemoveId)
-      await fetchMembers()
+      await refetchMembers()
       successDeleteToast('Member removed')
     } catch {
       errorToast('Failed to remove member')
@@ -193,7 +185,7 @@ export function WorkspaceMembersPage() {
         <InviteModal
           workspaceId={workspaceId}
           onClose={() => setShowInvite(false)}
-          onInvited={fetchMembers}
+          onInvited={refetchMembers}
         />
       )}
 
