@@ -1,10 +1,10 @@
-import { ArrowLeft } from '@phosphor-icons/react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Header } from '../../shared/components/Header';
-import { useSharedDocumentDetail } from '../../features/documents/hooks/useSharedDocumentDetail';
-import { DocumentTitleBar } from '../../features/documents/components/details-page/DocumentTitleBar';
-import { DocumentViewerToolbar } from '../../features/documents/components/details-page/DocumentViewerToolbar';
-import { DocumentViewerShell } from '../../features/documents/components/details-page/DocumentViewerShell';
+import { ArrowLeft } from '@phosphor-icons/react'
+import { isAxiosError } from 'axios'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
+
+import { DocumentDetailExperience } from '../../features/documents/components/details-page/DocumentDetailExperience'
+import { useSharedDocumentDetail } from '../../features/documents/hooks/useSharedDocumentDetail'
+import { Header } from '../../shared/components/Header'
 
 export function SharedDocumentDetailPage() {
   const navigate = useNavigate()
@@ -14,6 +14,7 @@ export function SharedDocumentDetailPage() {
     data: document,
     isLoading,
     isError,
+    error,
   } = useSharedDocumentDetail(documentId)
 
   if (isLoading) {
@@ -27,7 +28,19 @@ export function SharedDocumentDetailPage() {
     )
   }
 
-  if (isError || !document) {
+  if (isError) {
+    const status = getErrorStatus(error)
+
+    if (status === 401) {
+      return <Navigate to="/401" replace />
+    }
+
+    if (status === 403) {
+      return <Navigate to="/403" replace />
+    }
+  }
+
+  if (isError || !document || !documentId) {
     return (
       <div className="min-h-screen bg-white">
         <Header showFunctions />
@@ -39,35 +52,31 @@ export function SharedDocumentDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <Header showFunctions />
+    <DocumentDetailExperience
+      workspaceId={document.workspaceId}
+      documentId={documentId}
+      document={document}
+      backElement={
+        <button
+          type="button"
+          onClick={() => navigate('/shared-with-me')}
+          className="flex items-center gap-2 text-sm font-medium text-stone-800 hover:text-stone-950"
+        >
+          <ArrowLeft size={16} />
+          Back to Shared with me
+        </button>
+      }
+    />
+  )
+}
 
-      <main className="px-8 py-6">
-        <div className="mb-4 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => navigate('/shared-with-me')}
-            className="flex items-center gap-2 text-sm font-medium text-stone-800 hover:text-stone-950"
-          >
-            <ArrowLeft size={16} />
-            Back to Shared with me
-          </button>
+function getErrorStatus(error: unknown) {
+  if (!isAxiosError(error)) return null
 
-          <DocumentViewerToolbar
-            workspaceId={document.workspaceId}
-            document={document}
-          />
-        </div>
-
-        <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
-          <DocumentTitleBar
-            workspaceId={document.workspaceId}
-            document={document}
-          />
-
-          <DocumentViewerShell document={document} />
-        </div>
-      </main>
-    </div>
+  return (
+    error.response?.status ??
+    (error.response?.data as { statusCode?: number } | undefined)
+      ?.statusCode ??
+    null
   )
 }

@@ -2,16 +2,16 @@ import {
   ChatText,
   NotePencil,
   ShareNetwork,
-} from '@phosphor-icons/react'
-import { useState } from 'react'
-import type { Document } from '../../types/document.type'
+} from '@phosphor-icons/react';
+import { useState } from 'react';
+import type { Document } from '../../types/document.type';
 import {
   canCommentDocument,
   canEditDocument,
   canManageDocumentAccess,
-} from '../../utils/documents.permission.util'
-import { DocumentRoleBadge } from './DocumentRoleBadge'
-import { ShareDocumentModal } from '../share-document/ShareDocumentModal'
+} from '../../utils/documents.permission.util';
+import { DocumentRoleBadge } from './DocumentRoleBadge';
+import { ShareDocumentModal } from '../share-document/ShareDocumentModal';
 
 interface DocumentViewerToolbarProps {
   workspaceId: string

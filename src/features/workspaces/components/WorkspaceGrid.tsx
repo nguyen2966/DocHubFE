@@ -33,7 +33,7 @@ export function WorkspaceGrid({
   onInviteClick,
 }: WorkspaceGridProps) {
   return (
-    <div className="min-h-[704px] w-full">
+    <div className="w-full">
       <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         {workspaces.map((workspace) => (
           <WorkspaceCard

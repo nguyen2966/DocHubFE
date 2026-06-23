@@ -1,4 +1,4 @@
-import { FilePdf } from '@phosphor-icons/react'
+import { File } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import type { SharedDocument } from '../../types/document.type'
 
@@ -25,7 +25,7 @@ export function SharedDocumentRow({ document }: SharedDocumentRowProps) {
       <td className="py-3">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded bg-red-50 text-red-500">
-            <FilePdf size={18} />
+            <File size={18} />
           </div>
 
           <span className="font-medium text-stone-900">

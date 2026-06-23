@@ -92,13 +92,15 @@ function App() {
             }
           />
 
+          <Route path="/shared-with-me" element={<SharedWithMePage />} />
+          <Route
+            path="/shared-with-me/documents/:documentId"
+            element={<SharedDocumentDetailPage />}
+          />
+
         </Route>
 
-        <Route path="/shared-with-me" element={<SharedWithMePage />} />
-        <Route
-          path="/shared-with-me/documents/:documentId"
-          element={<SharedDocumentDetailPage />}
-        />
+
 
         <Route path="/401" element={<UnAuthorizedPage />} />
         <Route path="/403" element={<ForrbiddenPage />} />

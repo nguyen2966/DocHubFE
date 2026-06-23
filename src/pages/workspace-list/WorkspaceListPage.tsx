@@ -1,15 +1,18 @@
-import { PlusIcon } from '@phosphor-icons/react/dist/ssr'
-import { useState } from 'react'
+import { PlusIcon } from '@phosphor-icons/react/dist/ssr';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { CreateWorkspaceModal } from '../../features/workspaces/components/CreateWorkspaceModal'
-import { InviteModal } from '../../features/workspaces/components/InviteModal'
-import { WorkspaceGrid } from '../../features/workspaces/components/WorkspaceGrid'
-import { useWorkspaces } from '../../features/workspaces/hooks/useWorkspace'
-import { Header } from '../../shared/components/Header'
-import { Pagination } from '../../shared/components/Pagination'
-import { Button } from '../../shared/components/ui/Button'
+import { CreateWorkspaceModal } from '../../features/workspaces/components/CreateWorkspaceModal';
+import { InviteModal } from '../../features/workspaces/components/InviteModal';
+import { WorkspaceGrid } from '../../features/workspaces/components/WorkspaceGrid';
+import { useWorkspaces } from '../../features/workspaces/hooks/useWorkspace';
+import { Header } from '../../shared/components/Header';
+import { Pagination } from '../../shared/components/Pagination';
+import { Button } from '../../shared/components/ui/Button';
+import { ShareNetwork } from '@phosphor-icons/react';
 
 export function WorkspaceListPage() {
+  const navigate = useNavigate()
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [activeInviteWorkspaceId, setActiveInviteWorkspaceId] = useState<
@@ -34,17 +37,28 @@ export function WorkspaceListPage() {
               </p>
             </div>
 
-            <Button
-              className="inline-flex items-center gap-2 whitespace-nowrap"
-              onClick={() => setIsCreateOpen(true)}
-              disabled={false}
-            >
-              <PlusIcon
-                className="h-5 w-5 shrink-0 align-middle"
-                aria-hidden="true"
-              />
-              <span className="leading-none">Create Workspace</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate('/shared-with-me')}
+                className="inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium text-stone-800 transition hover:bg-stone-50"
+              >
+                <ShareNetwork size={16} />
+                Shared with me
+              </button>
+
+              <Button
+                className="inline-flex h-9 items-center gap-2 whitespace-nowrap"
+                onClick={() => setIsCreateOpen(true)}
+                disabled={false}
+              >
+                <PlusIcon
+                  className="h-5 w-5 shrink-0 align-middle"
+                  aria-hidden="true"
+                />
+                <span className="leading-none">Create Workspace</span>
+              </Button>
+            </div>
           </div>
 
           <div className="w-full px-14 py-2">

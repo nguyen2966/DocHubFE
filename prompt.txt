@@ -1,185 +1,113 @@
-Inspect the Apryse PDF viewer refactor in DocHubFE and create a careful pruning/refactor plan first. Do not modify code yet.
+Refactor FE shared document detail without touching existing normal document hooks.
 
-Context:
-The Apryse viewer was split from one god file into multiple type/util files, but the main viewer logic is still long. The PDF zoom is now intentionally fixed at 1.25, so some old zoom-enforcement logic may be unnecessary. I want you to inspect carefully and make a plan before coding.
+Constraints:
+- Do not modify existing normal document hooks such as useDocumentDetail, useEditPdf, useDocuments, useCreateMarkdownDocument, upload hooks, or comment hooks.
+- It is okay to update shared-with-me specific service/hook/types because BE now returns paginated shared documents and shared detail returns permissions.
+- Do not change backend API routes.
 
-Primary goal:
-Find unnecessary, duplicated, stale, or over-engineered logic in the Apryse viewer area and propose a safe pruning plan.
+Tasks:
 
-Do not apply changes yet.
+1. Create reusable component:
+   src/features/documents/components/details-page/DocumentDetailExperience.tsx
 
-Files to inspect:
-- src/features/documents/components/details-page/AprysePdfViewer.tsx
-- all nearby Apryse-related split files in:
-  src/features/documents/components/details-page/
-  src/features/documents/components/details-page/types*
-  src/features/documents/components/details-page/utils*
-  src/features/documents/components/details-page/hooks*
-- parent integration files:
-  src/pages/document-details/DocumentDetailPage.tsx
-  src/features/documents/components/details-page/DocumentViewerShell.tsx
-  src/features/documents/components/details-page/DocumentTitleBar.tsx
-  src/features/documents/components/details-page/DocumentViewerToolbar.tsx
-- document edit service/hook files if relevant:
-  src/features/documents/service/document.service.ts
-  src/features/documents/hooks/*edit*
+   Move the full document interaction experience from:
+   src/pages/document-details/DocumentDetailPage.tsx
 
-Desired product flow to preserve:
-1. Normal view mode:
-   - render PDF with Apryse
-   - fixed zoom rate 1.25
-   - comments render as highlight when visualState is highlight
-   - comments render as point/avatar marker when visualState is point/degraded
-   - sidebar/comment overlay works
+   into DocumentDetailExperience.
 
-2. Comment creation:
-   - user selects text
-   - temporary highlight anchor appears
-   - pending comment composer opens
-   - saving comment persists anchor data
-   - canceling removes temporary anchor
+   Move:
+   - comment popover/sidebar state
+   - Apryse viewer refs
+   - PDF edit state
+   - comment create/reply/edit/delete handlers
+   - pending comment composer
+   - hover preview
+   - delete modals
+   - layout with Header, toolbar, title bar, viewer shell, comment panel
 
-3. Edit mode:
-   - entering edit mode disables/hides comment anchors to avoid misleading highlights
-   - Apryse ContentEdit mode starts correctly
-   - comment sidebar/composer should be closed/cancelled when edit starts
+   Do not move useDocumentDetail into this component.
+   DocumentDetailExperience receives already-fetched document data.
 
-4. Save edited PDF:
-   - force Apryse content edit blur/commit before export
-   - collect editedRects
-   - compare editedRects with existing comment anchor rects
-   - degraded/overlapped comments become point markers
-   - non-overlapped comments stay highlights
-   - send edited PDF blob + editedRects + degradedAnnotationIds to backend
+   Props:
+   interface DocumentDetailExperienceProps {
+     workspaceId: string
+     documentId: string
+     document: Document
+     backElement: React.ReactNode
+   }
 
-5. Cancel/discard edit:
-   - local Apryse edits should not remain visually if user discards
-   - viewer should return to original loaded PDF state
+   Replace DocumentBackButton inside the moved JSX with {backElement}.
 
-6. Do not break:
-   - page navigation
-   - current page/page count
-   - comment selection/thread opening
-   - share/document detail layout
-   - permission-driven toolbar behavior
+2. Simplify WorkspaceDocumentDetailPage:
+   - Keep useParams and useDocumentDetail here.
+   - Keep loading/error/404 handling here.
+   - Render DocumentDetailExperience after document is loaded.
+   - Pass:
+       workspaceId
+       documentId
+       document
+       backElement={<DocumentBackButton workspaceId={workspaceId} />}
 
-Inspection focus:
+3. Simplify SharedDocumentDetailPage:
+   File:
+   src/pages/share-with-me-details/SharedDocumentDetail.tsx
 
-A. Zoom logic
-Because zoom is fixed at 1.25:
-- identify all zoom-related state, refs, event blockers, retry timeouts, shortcut blockers, wheel/touch/pinch blockers, UI input blockers
-- decide what is still necessary
-- propose a minimal fixed-zoom implementation
-- prefer simple applyLockedZoom(instance) on documentLoaded / file loaded / zoomUpdated
-- identify logic that can be removed safely
+   - Remove direct usage of DocumentViewerToolbar, DocumentTitleBar, and DocumentViewerShell.
+   - Keep useSharedDocumentDetail here.
+   - Keep loading/error states here.
+   - Render DocumentDetailExperience after document is loaded.
+   - Pass:
+       workspaceId={document.workspaceId}
+       documentId={documentId}
+       document={document}
+       backElement = a button that navigates to /shared-with-me
 
-B. Legacy avatar marker logic
-The current visible markers may be rendered through React overlay, not Apryse annotations.
-Inspect whether any Apryse “avatar marker annotations” are still created.
-If not, propose removing:
-- Apryse avatar marker creation/removal
-- isDocHubAvatarMarker logic
-- annotationSelected branches for avatar markers
-- stale constants/types related only to legacy avatar annotations
+   The shared detail page should reuse the exact same edit/comment/view logic as normal document detail.
 
-C. Hidden XFDF anchors for point comments
-Inspect whether point/degraded comments still need hidden imported XFDF anchors.
-If annotation.position + pageNumber are reliable enough, propose simplifying point rendering to use stored position directly.
-But be careful: if hidden XFDF is still needed for accurate historical anchor position, explain why and keep it.
+4. Adapt shared-with-me list to paginated response.
 
-D. Degraded annotation detection
-Inspect whether comment anchor rects are collected before comment annotations are removed for edit mode.
-Important:
-- If comment anchors are removed before export, collectDegradedCommentAnnotationIds() must not depend on current Apryse annotationManager list.
-- Plan should ensure rects are cached before removing anchors.
-- Save should compare cached comment anchor rects with editedRects.
+   In document.type.ts:
+   - Add permissions?: DocumentPermission[] to SharedDocument.
+   - Add:
+     export type SharedDocumentListResponse = PagePaginatedResponse<SharedDocument>
 
-E. Export/commit logic
-Inspect blur/commit/stopContentEditing/export flow.
-Do not prune this aggressively if it exists to fix Apryse not committing last edits.
-Classify which parts are necessary vs questionable.
+   In document.service.ts:
+   - Change only getSharedWithMeDocuments to accept params { page?: number; limit?: number }.
+   - Return Promise<SharedDocumentListResponse>.
+   - Call GET /shared-with-me/documents with params.
 
-F. Event listeners and cleanup
-Inspect all addEventListener/removeEventListener usage:
-- document/window/shadowRoot listeners
-- Apryse documentViewer listeners
-- annotationManager listeners
-- scroll/resize observers
-Check whether cleanup is correct and whether any local variable shadows browser document.
+   In userSharedDocuments.ts:
+   - Change useSharedDocuments to accept params { page?: number; limit?: number }.
+   - Use queryKey ['shared-with-me', 'documents', params].
+   - Query with documentService.getSharedWithMeDocuments(params).
 
-G. Component responsibility split
-Identify logic that should stay in AprysePdfViewer.tsx vs logic that should move to hooks/util files.
-Potential hooks:
-- useApryseViewerInit
-- useApryseFixedZoom
-- useApryseEditMode
-- useApryseCommentRendering
-- useApryseCommentOverlay
-- useAprysePdfExport
+5. Update ShareWithMePage:
+   File:
+   src/pages/share-with-me/ShareWithMePage.tsx
 
-H. Visual height/layout
-If the concern is visual height, inspect container classes too.
-Report where height is controlled, for example h-[calc(...)].
-Do not change it yet, just identify.
+   - Add local page state.
+   - Call useSharedDocuments({ page, limit: 12 }).
+   - Use:
+       const documents = data?.data ?? []
+       const meta = data?.meta
+   - Use Total {meta?.totalItems ?? 0}, not documents.length.
+   - Import Pagination from src/shared/components/Pagination.
+   - Render Pagination below SharedDocumentTable:
+       <Pagination meta={meta} disabled={isFetching} onPageChange={setPage} />
 
-Required output:
+6. Preserve existing UI behavior:
+   - Workspace document detail should look and behave the same.
+   - Shared document detail should now support the same viewer/comment/edit experience based on document.permissions.
+   - Viewer users should only view.
+   - Commenter users should view/comment.
+   - Editor users should view/comment/edit.
+   - Shared users should not see actions unless document.permissions allows them.
 
-# Apryse Viewer Pruning Plan
-
-## Current structure
-List the Apryse-related files and briefly describe each file’s responsibility.
-
-## Product-flow check
-For each desired flow above, mark:
-- OK
-- Partially OK
-- Broken / risky
-Explain briefly.
-
-## Logic that can likely be pruned
-For each candidate:
-- file/path
-- function/refs/constants involved
-- why it appears unnecessary
-- risk level: low / medium / high
-- safe replacement or deletion plan
-
-## Logic that should NOT be pruned
-List logic that looks ugly but is probably necessary, especially Apryse edit commit/export workarounds.
-
-## Bugs found during inspection
-List concrete bugs or risky behavior, especially:
-- degradedAnnotationIds always empty because anchors are removed before comparison
-- point marker fallback using wrong position
-- discard edit not reloading original PDF
-- event listener cleanup problems
-- stale zoom logic
-Only include bugs that are actually present in current code.
-
-## Proposed implementation phases
-Give a step-by-step safe plan:
-1. Smallest low-risk cleanup
-2. Zoom simplification
-3. Comment/degraded detection correctness
-4. Optional hook extraction
-5. Typecheck/manual test
-
-## Manual test checklist
-Include tests for:
-- open PDF
-- page navigation
-- select text and create comment
-- cancel pending comment
-- enter edit mode
-- save edit and ensure overlapped comment degrades to point
-- save edit and ensure non-overlapped comment remains highlight
-- discard edit and ensure local edit disappears
-- fixed zoom stays 1.25
-- no multiple event listener leaks after changing documents
-
-Important constraints:
-- Do not modify code yet.
-- Do not remove logic just because it looks verbose.
-- Explain trade-offs.
-- Prefer a conservative plan that preserves current behavior.
-- After the plan, wait for approval before coding.
+Acceptance criteria:
+- No duplicated full document detail implementation.
+- WorkspaceDocumentDetailPage is only a data wrapper.
+- SharedDocumentDetailPage is only a data wrapper.
+- DocumentDetailExperience is the single source for document detail UI/interaction.
+- ShareWithMePage supports paginated data and shared Pagination component.
+- Existing normal document hooks are not modified.
+- App builds successfully with npm run build.
