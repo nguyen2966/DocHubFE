@@ -22,11 +22,6 @@ interface CommentAnnotationOverlayLayerProps {
     thread: CommentThread,
     markerElement: HTMLElement,
   ) => void
-  onMarkerHover?: (
-    thread: CommentThread,
-    markerElement: HTMLElement,
-  ) => void
-  onMarkerHoverEnd?: (thread: CommentThread) => void
   onMarkerElementChange?: (
     thread: CommentThread,
     markerElement: HTMLElement | null,
@@ -41,8 +36,6 @@ export function CommentAnnotationOverlayLayer({
   hidden,
   onAddComment,
   onMarkerClick,
-  onMarkerHover,
-  onMarkerHoverEnd,
   onMarkerElementChange,
 }: CommentAnnotationOverlayLayerProps) {
   if (hidden) return null
@@ -65,8 +58,6 @@ export function CommentAnnotationOverlayLayer({
             overlayRect={marker.overlayRect}
             active={activeAnnotationId === marker.thread.annotation._id}
             onClick={onMarkerClick}
-            onHover={onMarkerHover}
-            onHoverEnd={onMarkerHoverEnd}
             onElementChange={onMarkerElementChange}
           />
         ))}

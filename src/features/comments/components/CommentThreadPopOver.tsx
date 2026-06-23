@@ -61,7 +61,14 @@ export function CommentThreadPopover({
 
     const handlePointerDown = (event: PointerEvent) => {
       if (!popoverRef.current) return
-      if (popoverRef.current.contains(event.target as Node)) return
+      const target = event.target as Node
+      if (popoverRef.current.contains(target)) return
+      if (
+        target instanceof HTMLElement &&
+        target.closest('[data-comment-action-menu]')
+      ) {
+        return
+      }
 
       onClose()
     }
