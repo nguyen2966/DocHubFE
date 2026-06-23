@@ -7,7 +7,6 @@ import { io, type Socket } from 'socket.io-client';
 import { documentService } from '../service/document.service';
 import type { UploadJobStatus, UploadPdfResponse } from '../types/document.type';
 
-// ── Types ────────────────────────────────────────────────────────────────────
 
 interface JobState {
   jobId: string;
@@ -22,8 +21,6 @@ interface UploadVariables {
   title?: string;
 }
 
-// ── Hook ─────────────────────────────────────────────────────────────────────
-
 export function useUploadPdfWithProgress(workspaceId: string) {
   const queryClient = useQueryClient()
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -31,12 +28,11 @@ export function useUploadPdfWithProgress(workspaceId: string) {
   const socketRef = useRef<Socket | null>(null);
   const [job, setJob] = useState<JobState | null>(null);
 
-  // ── WebSocket: kết nối và lắng nghe job:progress ─────────────────────────
   useEffect(() => {
     // Chỉ kết nối khi đang có job đang chạy
     if (!job?.jobId) return;
 
-    const socket = io(`http://localhost:3000/progress`, {
+    const socket = io(import.meta.env.VITE_SOCKET_URL, {
       path: '/socket.io',
       transports: ['websocket'],
     });
