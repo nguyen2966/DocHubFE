@@ -103,6 +103,7 @@ export type UploadJobStatus =
   processingStatus: DocumentProcessingStatus
   pdfFileUrl?: string
   role: Exclude<DocumentRole, 'owner'>
+  permissions?: DocumentPermission[]
   owner: {
     _id: string
     fullName: string
@@ -113,6 +114,9 @@ export type UploadJobStatus =
   updatedAt: string | null
   createdAt: string | null
 }
+
+export type SharedDocumentListResponse =
+  PagePaginatedResponse<SharedDocument>
 
 export interface SharedDocumentDetail extends Document {
   workspaceName: string

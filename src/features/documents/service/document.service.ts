@@ -3,6 +3,7 @@ import type { AxiosProgressEvent } from 'axios';
 import type {
   SharedDocument,
   SharedDocumentDetail,
+  SharedDocumentListResponse,
 } from '../types/document.type'
 
 import type {
@@ -183,8 +184,14 @@ export const documentService = {
     return res.data
   },
 
-  async getSharedWithMeDocuments(): Promise<SharedDocument[]> {
-    const res = await api.get<SharedDocument[]>('/shared-with-me/documents')
+  async getSharedWithMeDocuments(params?: {
+    page?: number
+    limit?: number
+  }): Promise<SharedDocumentListResponse> {
+    const res = await api.get<SharedDocumentListResponse>(
+      '/shared-with-me/documents',
+      { params },
+    )
     return res.data
   },
 

@@ -1,14 +1,25 @@
+import { useState } from 'react'
+
 import { Header } from '../../shared/components/Header'
 import { useSharedDocuments } from '../../features/documents/hooks/userSharedDocuments'
 import { SharedDocumentTable } from '../../features/documents/components/shared-with-me/SharedDocumentTable'
 import { SharedDocumentEmptyState } from '../../features/documents/components/shared-with-me/SharedDocumentEmptyState'
+import { Pagination } from '../../shared/components/Pagination'
+
+const SHARED_DOCUMENTS_PAGE_LIMIT = 12
 
 export function SharedWithMePage() {
+  const [page, setPage] = useState(1)
+
   const {
-    data: documents = [],
+    data,
     isLoading,
+    isFetching,
     isError,
-  } = useSharedDocuments()
+  } = useSharedDocuments({ page, limit: SHARED_DOCUMENTS_PAGE_LIMIT })
+
+  const documents = data?.data ?? []
+  const meta = data?.meta
 
   return (
     <div className="min-h-screen bg-white">
@@ -23,7 +34,7 @@ export function SharedWithMePage() {
           <div className="h-6 w-px bg-stone-200" />
 
           <span className="text-sm text-stone-500">
-            Total {documents.length}
+            Total {meta?.totalItems ?? 0}
           </span>
         </div>
 
@@ -44,7 +55,15 @@ export function SharedWithMePage() {
         )}
 
         {!isLoading && !isError && documents.length > 0 && (
-          <SharedDocumentTable documents={documents} />
+          <>
+            <SharedDocumentTable documents={documents} />
+
+            <Pagination
+              meta={meta}
+              disabled={isFetching}
+              onPageChange={setPage}
+            />
+          </>
         )}
       </main>
     </div>
