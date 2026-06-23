@@ -5,6 +5,7 @@ coverage
 .gitignore
 .env
 .env.*
+public/webviewer
 public/lib/webviewer
 npm-debug.log
 .DS_Store
