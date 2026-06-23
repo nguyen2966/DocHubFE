@@ -8,3 +8,5 @@ coverage
 public/lib/webviewer
 npm-debug.log
 .DS_Store
+tempt.txt
+prompt.txt
