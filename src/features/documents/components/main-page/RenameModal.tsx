@@ -48,13 +48,19 @@ export function RenameModal({
     onSubmit(value.trim())
   }
 
+  const canSave =
+    value.trim().length > 0 &&
+    !error &&
+    value.trim() !== initialValue.trim() &&
+    !loading
+
   if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div className="w-[580px] rounded-3xl bg-white shadow-xl">
-        <div className="flex items-center justify-between px-6 pt-6">
-          <h2 className="text-2xl font-medium text-stone-900">
+      <div className="flex h-[176px] w-[425px] flex-col rounded-2xl bg-white shadow-xl">
+        <div className="flex items-center justify-between px-5 pt-4">
+          <h2 className="text-lg font-medium text-stone-900">
             {title}
           </h2>
 
@@ -66,16 +72,16 @@ export function RenameModal({
           </button>
         </div>
 
-        <div className="px-6 py-5">
+        <div className="px-5 py-3">
           <div className="relative">
             <input
               value={value}
               onChange={(e) => handleChange(e.target.value)}
               aria-invalid={Boolean(error)}
-              className={`w-full rounded-2xl border-2 px-4 py-3 pr-10 text-lg outline-none ${
+              className={`h-10 w-full rounded-xl border px-3 pr-9 text-sm outline-none transition-all focus:border-2 focus:shadow-[0_0_0_4px_rgba(120,113,108,0.18)] ${
                 error
-                  ? 'border-red-500 focus:border-red-500'
-                  : 'border-stone-300 focus:border-stone-400'
+                  ? 'border-red-500 focus:border-red-500 focus:shadow-[0_0_0_4px_rgba(239,68,68,0.16)]'
+                  : 'border-stone-300 focus:border-stone-500'
               }`}
             />
 
@@ -90,24 +96,28 @@ export function RenameModal({
             )}
           </div>
 
-          {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+          {error && <p className="mt-1.5 text-xs text-red-500">{error}</p>}
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-stone-200 px-6 py-5">
+        <div className="mt-auto flex justify-end gap-2 border-t border-stone-200 px-5 py-3">
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="rounded-xl border border-stone-300 px-5 py-2 text-lg font-medium hover:bg-stone-50"
+            className="h-9 rounded-lg border border-stone-300 px-4 text-sm font-medium hover:bg-stone-50"
           >
             Cancel
           </button>
 
           <button
             type="button"
-            disabled={!value.trim() || Boolean(error) || loading}
+            disabled={!canSave}
             onClick={handleSubmit}
-            className="rounded-xl bg-stone-400 px-5 py-2 text-lg font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className={`h-9 rounded-lg px-4 text-sm font-medium transition ${
+              canSave
+                ? 'bg-stone-950 text-white hover:bg-stone-800'
+                : 'cursor-not-allowed bg-stone-400 text-white opacity-50'
+            }`}
           >
             {loading ? 'Saving...' : 'Save'}
           </button>
