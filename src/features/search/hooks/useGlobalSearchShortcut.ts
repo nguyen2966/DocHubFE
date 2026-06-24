@@ -33,7 +33,7 @@ export function useGlobalSearchShortcut({
       }
 
       if (
-        event.key.toLowerCase() === 'k' &&
+        event.key?.toLowerCase() === 'k' &&
         (event.metaKey || event.ctrlKey) &&
         (!isEditableTarget(event.target) || isSearchInput)
       ) {
