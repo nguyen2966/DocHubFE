@@ -1,10 +1,10 @@
-import Avatar from '../../../assets/avatar.png'
 import type { CommentThread } from '../utils/comment-tree.util'
 import {
   getRootComment,
   isCommentDeleted,
 } from '../utils/comment-tree.util'
 import { TimestampTooltip } from './TimestamptToolTip'
+import { UserAvatar } from '../../../shared/components/UserAvatar'
 
 interface CommentThreadPreviewPopoverProps {
   thread: CommentThread
@@ -52,10 +52,11 @@ export function CommentThreadPreviewPopover({
       }}
     >
       <div className="flex gap-2">
-        <img
-          src={author?.avatarUrl ?? Avatar}
-          alt=""
-          className="h-7 w-7 shrink-0 rounded-full object-cover"
+        <UserAvatar
+          src={author?.avatarUrl}
+          name={author?.fullName}
+          size="sm"
+          className="h-7 w-7 shrink-0"
         />
 
         <div className="min-w-0 flex-1">

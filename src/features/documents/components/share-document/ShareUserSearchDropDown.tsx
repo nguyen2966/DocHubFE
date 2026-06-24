@@ -1,6 +1,6 @@
 import type { SearchDocumentUserResult } from '../../types/document.type'
 import { getDisabledReasonLabel } from '../../utils/shared-disable-reason'
-import Avatar from '../../../../assets/avatar.png'
+import { UserAvatar } from '../../../../shared/components/UserAvatar'
 
 interface Props {
   results: SearchDocumentUserResult[]
@@ -38,9 +38,10 @@ export function ShareUserSearchDropdown({
               onClick={() => onSelect(user)}
               className="flex h-[60px] w-full items-center gap-3 px-5 text-left hover:bg-stone-50 disabled:cursor-not-allowed disabled:hover:bg-white"
             >
-              <img
-                src={Avatar}
-                alt=""
+              <UserAvatar
+                src={user.avatarUrl}
+                name={user.fullName ?? user.email}
+                size="sm"
                 className={[
                   'h-8 w-8 shrink-0 rounded-full object-cover',
                   disabled ? 'opacity-50' : '',

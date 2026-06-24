@@ -32,7 +32,7 @@ export type WorkspaceListResponse = PagePaginatedResponse<Workspace>
 
 export interface Member {
   _id: string
-  userId: { _id: string; fullName: string; email: string }
+  userId: { _id: string; fullName: string; email: string; avatarUrl?: string | null }
   roleId: { name: 'admin' | 'member' }
 }
 
@@ -41,6 +41,7 @@ export interface UserSearchResult {
   isRegistered: boolean
   userId?: string
   fullName?: string
+  avatarUrl?: string | null
   isMember?: boolean
 }
 

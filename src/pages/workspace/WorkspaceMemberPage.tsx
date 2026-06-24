@@ -4,7 +4,6 @@ import { UserPlus } from '@phosphor-icons/react'
 import { InviteModal } from '../../features/workspaces/components/InviteModal'
 import { workspaceService } from '../../features/workspaces/services/workspace.service'
 import { Member, WorkspaceRole } from '../../features/workspaces/types/workspace.type'
-import Avatar from '../../assets/avatar.png';
 import { useWorkspaceDetail } from '../../features/workspaces/hooks/useWorkspaceDetail'
 import { useWorkspaceMembers } from '../../features/workspaces/hooks/useWorkspaceMembers'
 import { DeleteConfirmModal } from '../../shared/components/ui/DeleteConfirmModal'
@@ -12,6 +11,7 @@ import { can } from '../../helper/can-permission'
 import { errorToast, successDeleteToast, successToast } from '../../shared/components/ui/Toast';
 import { MembersTable, MembersTableColumn, RoleCell, RemoveButton } from '../../shared/components/ui/Table';
 import { useAuthStore } from '../../shared/hooks/useAuthStore'
+import { UserAvatar } from '../../shared/components/UserAvatar'
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -78,9 +78,11 @@ export function WorkspaceMembersPage() {
         const isSelf = user?._id === currentUserId
         return (
           <div className="flex items-center gap-3 min-w-0">
-            <img
-              className={`w-9 h-9 text-xs rounded-full flex items-center justify-center font-semibold shrink-0`}
-              src={Avatar}
+            <UserAvatar
+              src={user?.avatarUrl}
+              name={user?.fullName ?? user?.email}
+              size="md"
+              className="h-9 w-9 shrink-0"
             />
             <div className="min-w-0">
               <p className="text-sm font-medium text-stone-900 truncate">

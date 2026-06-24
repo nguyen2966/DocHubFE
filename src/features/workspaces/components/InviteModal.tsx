@@ -4,7 +4,7 @@ import { workspaceService } from '../services/workspace.service';
 import { EmailTag } from "./EmailTags";
 import { useWorkspaceDetail } from "../hooks/useWorkspaceDetail";
 import { getWorkspaceAvatar } from "../../../helper/avatar-random";
-import Avatar from '../../../assets/avatar.png';
+import { UserAvatar } from "../../../shared/components/UserAvatar";
 
 export function InviteModal({
   workspaceId,
@@ -153,10 +153,11 @@ export function InviteModal({
                           className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${isJoined ? 'opacity-50 cursor-not-allowed bg-stone-50/20' : 'hover:bg-stone-50'
                             }`}
                         >
-                          <img
-                            src={Avatar}
-                            alt="User Avatar"
-                            className="w-8 h-8 rounded-full object-cover shrink-0"
+                          <UserAvatar
+                            src={u.avatarUrl}
+                            name={u.fullName ?? u.email}
+                            size="sm"
+                            className="h-8 w-8 shrink-0"
                           />
 
                           <div className="flex-1 min-w-0">
@@ -178,10 +179,10 @@ export function InviteModal({
                         onClick={() => addEmail(input)}
                         className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50 transition-colors text-left border-t border-stone-100"
                       >
-                        <img
-                            src={Avatar}
-                            alt="User Avatar"
-                            className="w-8 h-8 rounded-full object-cover shrink-0"
+                        <UserAvatar
+                            name={input.trim()}
+                            size="sm"
+                            className="h-8 w-8 shrink-0"
                         />
                         <div className="flex-1 min-w-0">
                           <p className="text-[13.5px] font-medium text-red-500">Unregistered user</p>

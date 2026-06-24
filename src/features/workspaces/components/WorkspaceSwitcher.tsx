@@ -7,7 +7,6 @@ import {
   Plus,
 } from '@phosphor-icons/react';
 import { useWorkspaces } from '../hooks/useWorkspace';
-import Avatar from '../../../assets/avatar.png';
 import { getWorkspaceAvatar } from '../../../helper/avatar-random';
 
 export function WorkspaceSwitcher() {
@@ -38,7 +37,14 @@ export function WorkspaceSwitcher() {
         onClick={() => setOpen((value) => !value)}
         className="flex w-full min-w-0 items-center gap-3 rounded-xl bg-stone-100 px-3 py-2 text-left transition hover:bg-stone-200"
       >
-        <WorkspaceAvatar url={Avatar} />
+        <WorkspaceAvatar
+          url={
+            currentWorkspace
+              ? getWorkspaceAvatar(currentWorkspace._id, currentWorkspace.name)
+              : undefined
+          }
+          name={currentWorkspace?.name ?? 'Workspace'}
+        />
 
         <div className="min-w-0 flex-1 overflow-hidden">
           <p className="truncate text-sm font-semibold text-stone-950">
@@ -72,7 +78,10 @@ export function WorkspaceSwitcher() {
                       isActive ? 'bg-stone-100' : 'hover:bg-stone-50',
                     ].join(' ')}
                   >
-                    <WorkspaceAvatar url={getWorkspaceAvatar(workspace._id, workspace.name)}/>
+                    <WorkspaceAvatar
+                      url={getWorkspaceAvatar(workspace._id, workspace.name)}
+                      name={workspace.name}
+                    />
 
                     <div className="min-w-0 flex-1 overflow-hidden">
                       <p className="truncate text-sm font-medium text-stone-950">
@@ -127,12 +136,18 @@ export function WorkspaceSwitcher() {
   )
 }
 
-function WorkspaceAvatar({ url }: { url: string }) {
-  
-
+function WorkspaceAvatar({ url, name }: { url?: string; name?: string }) {
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-stone-900 text-sm font-semibold text-white">
-      <img className='rounded-xl' src={url}/>
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-stone-900 text-sm font-semibold text-white">
+      {url ? (
+        <img
+          className="h-full w-full object-cover"
+          src={url}
+          alt={name ?? 'Workspace'}
+        />
+      ) : (
+        <span>{(name ?? 'W').charAt(0).toUpperCase()}</span>
+      )}
     </div>
   )
 }

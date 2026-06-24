@@ -2,7 +2,7 @@ import type { ActivityLog } from '../types/activity.type';
 import { formatActivityTimestamp } from '../util/activity-date.util';
 import { getActivityMessage } from '../util/activity-message.util';
 import { ActivityActionIcon } from './ActivityActionIcon';
-import Avatar from '../../../assets/avatar.png'
+import { UserAvatar } from '../../../shared/components/UserAvatar'
 
 interface ActivityLogRowProps {
   log: ActivityLog
@@ -19,10 +19,11 @@ export function ActivityLogRow({ log }: ActivityLogRowProps) {
     <tr className="border-b border-stone-200 last:border-b-0">
       <td className="w-[240px] px-2 py-2 align-middle">
         <div className="flex min-w-0 items-center gap-2">
-            <img
-              src={Avatar}
-              alt={actorName}
-              className="h-5 w-5 rounded-full object-cover"
+            <UserAvatar
+              src={log.actor?.avatarUrl}
+              name={actorName}
+              size="sm"
+              className="h-5 w-5"
             />
         
 

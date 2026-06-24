@@ -5,7 +5,7 @@ import {
   sortThreadsByNewestRoot,
 } from '../utils/comment-tree.util'
 import { TimestampTooltip} from './TimestamptToolTip';
-import Avatar from '../../../assets/avatar.png';
+import { UserAvatar } from '../../../shared/components/UserAvatar'
 
 interface CommentThreadListProps {
   threads: CommentThread[]
@@ -55,10 +55,11 @@ export function CommentThreadList({
             `}
           >
             {rootComment ? (
-              <img
-                src={Avatar}
-                alt={"avatar"}
-                className="h-7 w-7 rounded-full object-cover"
+              <UserAvatar
+                src={rootComment.author.avatarUrl}
+                name={rootComment.author.fullName}
+                size="sm"
+                className="h-7 w-7"
               />
             ) : (
               <div className="h-6 w-6 rounded-full bg-stone-200" />

@@ -1,7 +1,7 @@
 import { CaretDown, Check, Users, X } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ActivityActorOption } from '../types/activity.type';
-import Avatar from '../../../assets/avatar.png';
+import { UserAvatar } from '../../../shared/components/UserAvatar';
 
 interface ActivityActorFilterProps {
   value: string[]
@@ -129,10 +129,11 @@ export function ActivityActorFilter({
                       {checked && <Check size={12} weight="bold" />}
                     </span>
 
-                    <img
-                      src={Avatar}
-                      alt={"Avatar"}
-                      className="h-6 w-6 rounded-full object-cover"
+                    <UserAvatar
+                      src={actor.avatarUrl}
+                      name={getActorLabel(actor)}
+                      size="sm"
+                      className="h-6 w-6"
                     />
 
                     <span className="min-w-0 flex-1 truncate">

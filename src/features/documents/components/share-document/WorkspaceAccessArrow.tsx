@@ -1,4 +1,4 @@
-import Avatar from '../../../../assets/avatar.png'
+import { Users } from '@phosphor-icons/react'
 
 interface Props {
   workspaceName: string
@@ -9,11 +9,9 @@ export function WorkspaceAccessRow({ workspaceName, memberCount }: Props) {
   return (
     <div className="flex items-center justify-between py-1.5">
       <div className="flex min-w-0 items-center gap-3">
-        <img
-          src={Avatar}
-          alt=""
-          className="h-9 w-9 shrink-0 rounded-full object-cover"
-        />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-stone-100 text-stone-500">
+          <Users size={18} weight="bold" />
+        </div>
 
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-stone-950">

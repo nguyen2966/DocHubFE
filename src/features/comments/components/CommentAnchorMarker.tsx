@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-import Avatar from '../../../assets/avatar.png'
+import { UserAvatar } from '../../../shared/components/UserAvatar'
 import { getRootComment, type CommentThread } from '../utils/comment-tree.util'
 
 interface CommentAnchorMarkerProps {
@@ -24,7 +24,6 @@ export function CommentAnchorMarker({
   const markerRef = useRef<HTMLButtonElement | null>(null)
   const rootComment = getRootComment(thread.comments)
   const author = rootComment?.author
-  const avatarUrl = author?.avatarUrl ?? Avatar
   const markerSize = Math.max(overlayRect.width, overlayRect.height, 46)
   const markerLeft = overlayRect.left - (markerSize - overlayRect.width) / 2
   const markerTop = overlayRect.top - (markerSize - overlayRect.height) / 2
@@ -63,11 +62,11 @@ export function CommentAnchorMarker({
         borderRadius: '9999px 9999px 9999px 12px',
       }}
     >
-      <img
-        src={avatarUrl}
-        alt=""
-        className="h-full w-full rounded-full object-cover"
-        draggable={false}
+      <UserAvatar
+        src={author?.avatarUrl}
+        name={author?.fullName}
+        size="md"
+        className="h-full w-full"
       />
     </button>
   )

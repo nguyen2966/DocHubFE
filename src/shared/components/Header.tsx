@@ -2,10 +2,10 @@ import { MagnifyingGlass, SignOut } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import Avatar from '../../assets/avatar.png'
 import Logo from '../../assets/folio_logo.png'
 import { GlobalSearchModal, useGlobalSearchShortcut } from '../../features/search'
 import { useAuthStore } from '../hooks/useAuthStore'
+import { UserAvatar } from './UserAvatar'
 
 interface HeaderProps {
   showFunctions?: boolean
@@ -111,10 +111,11 @@ export function Header({ showFunctions }: HeaderProps) {
                 onClick={() => setShowMenu((value) => !value)}
                 className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 border-transparent transition-colors hover:border-stone-300"
               >
-                <img
-                  src={Avatar}
-                  alt={user.fullName ?? 'Avatar'}
-                  className="h-full w-full object-cover"
+                <UserAvatar
+                  src={user.avatarUrl}
+                  name={user.fullName}
+                  size="sm"
+                  className="h-full w-full"
                 />
               </button>
 

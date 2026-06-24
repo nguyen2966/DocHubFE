@@ -18,8 +18,8 @@ import {
 } from '../utils/comment-permission.util'
 import type { CommentInteractionHandlers } from './comment-component.type'
 import { TimestampTooltip } from './TimestamptToolTip';
-import Avatar from '../../../assets/avatar.png';
 import { commentFormSchema } from '../schema/comment.schema'
+import { UserAvatar } from '../../../shared/components/UserAvatar'
 
 interface CommentItemProps extends CommentInteractionHandlers {
   thread: CommentThread
@@ -170,10 +170,11 @@ export function CommentItem({
 
   return (
     <div className="group flex gap-2">
-      <img
-        src={Avatar}
-        alt={"avatar"}
-        className="h-7 w-7 rounded-full object-cover"
+      <UserAvatar
+        src={comment.author.avatarUrl}
+        name={comment.author.fullName}
+        size="sm"
+        className="h-7 w-7"
       />
 
       <div className="min-w-0 flex-1">

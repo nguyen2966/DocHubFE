@@ -2,7 +2,7 @@ import type { PendingDocumentUser, ShareRole } from '../../types/document.type'
 import { useUpdatePendingDocumentShareRole } from '../../hooks/useUpdatePendingDocumentShareRole'
 import { useRemovePendingDocumentShare } from '../../hooks/useRemovePendingDocumentShare'
 import { ShareRoleSelect } from './ShareRoleSelect'
-import Avatar from '../../../../assets/avatar.png'
+import { UserAvatar } from '../../../../shared/components/UserAvatar'
 
 interface Props {
   user: PendingDocumentUser
@@ -21,10 +21,10 @@ export function PendingAccessRow({ user, workspaceId, documentId }: Props) {
   return (
     <div className="flex items-center justify-between py-1.5">
       <div className="flex min-w-0 items-center gap-3">
-        <img
-          src={Avatar}
-          alt=""
-          className="h-9 w-9 shrink-0 rounded-full object-cover"
+        <UserAvatar
+          name={user.email}
+          size="md"
+          className="h-9 w-9 shrink-0"
         />
 
         <div className="min-w-0">
