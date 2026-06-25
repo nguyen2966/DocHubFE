@@ -34,6 +34,13 @@ interface DocumentViewerShellProps {
   ) => void
 }
 
+function withViewerCacheBuster(url: string, version?: number, updatedAt?: string | null) {
+  const rev = version ?? updatedAt ?? Date.now();
+  const separator = url.includes('?') ? '&' : '?'
+
+  return `${url}${separator}viewerRev=${encodeURIComponent(String(rev))}`
+}
+
 export function DocumentViewerShell({
   document,
   isPdfEditing,
@@ -75,9 +82,15 @@ export function DocumentViewerShell({
     )
   }
 
+  const viewerUrl = withViewerCacheBuster(
+    document.pdfFileUrl,
+    document.version,
+    document.updatedAt,
+  )
+
   return <AprysePdfViewer
     ref={viewerRef}
-    fileUrl={document.pdfFileUrl ?? ''}
+    fileUrl={viewerUrl ?? ''}
     isPdfEditing={isPdfEditing}
     commentThreads={commentThreads}
     selectedCommentAnnotationId={selectedCommentAnnotationId}

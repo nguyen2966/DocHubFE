@@ -30,6 +30,7 @@ export interface Document {
   title: string
   sourceType: DocumentSourceType
   ownerId: string | DocumentOwner
+  version?: number
 
   markdownContent?: string | null
   pdfFileUrl?: string
