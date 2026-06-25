@@ -5,6 +5,7 @@ import { WorkspaceCard } from './WorkspaceCard'
 
 interface WorkspaceGridProps {
   workspaces: Workspace[]
+  page: number
   onCreateClick: () => void
   onInviteClick: (workspaceId: string) => void
 }
@@ -29,6 +30,7 @@ function CreateWorkspaceCard({ onCreateClick }: { onCreateClick: () => void }) {
 
 export function WorkspaceGrid({
   workspaces,
+  page,
   onCreateClick,
   onInviteClick,
 }: WorkspaceGridProps) {
@@ -39,6 +41,7 @@ export function WorkspaceGrid({
           <WorkspaceCard
             key={workspace._id}
             workspace={workspace}
+            workspacePage={page}
             onInviteClick={onInviteClick}
           />
         ))}

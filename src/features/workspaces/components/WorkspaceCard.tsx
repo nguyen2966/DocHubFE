@@ -7,10 +7,15 @@ import { can } from '../../../helper/can-permission';
 
 interface WorkspaceCardProps {
   workspace: Workspace
+  workspacePage: number
   onInviteClick: (workspaceId: string) => void
 }
 
-export function WorkspaceCard({ workspace, onInviteClick }: WorkspaceCardProps) {
+export function WorkspaceCard({
+  workspace,
+  workspacePage,
+  onInviteClick,
+}: WorkspaceCardProps) {
   const navigate = useNavigate()
 
   // Giả lập danh sách avatar mẫu (3 hình đầu tiên)
@@ -35,7 +40,11 @@ export function WorkspaceCard({ workspace, onInviteClick }: WorkspaceCardProps) 
       {/* Lớp phủ tương tác điều hướng toàn bộ Card */}
       <button
         type="button"
-        onClick={() => navigate(`/workspaces/${workspace._id}/documents`)}
+        onClick={() =>
+          navigate(`/workspaces/${workspace._id}/documents`, {
+            state: { workspaceSwitcherPage: workspacePage },
+          })
+        }
         className="absolute inset-0 w-full h-full cursor-pointer rounded-[10px] z-0"
         aria-label={`Open ${workspace.name}`}
       />

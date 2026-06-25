@@ -72,6 +72,7 @@ export function WorkspaceListPage() {
               <>
                 <WorkspaceGrid
                   workspaces={workspaces}
+                  page={page}
                   onCreateClick={() => setIsCreateOpen(true)}
                   onInviteClick={(id) => setActiveInviteWorkspaceId(id)}
                 />

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   CaretDown,
   Check,
@@ -11,8 +11,10 @@ import { getWorkspaceAvatar } from '../../../helper/avatar-random';
 
 export function WorkspaceSwitcher() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { workspaceId } = useParams()
-  const { workspaces, isLoading } = useWorkspaces();
+  const workspaceSwitcherPage = getWorkspaceSwitcherPage(location.state)
+  const { workspaces, isLoading } = useWorkspaces(workspaceSwitcherPage);
   const [open, setOpen] = useState(false);
 
 
@@ -71,7 +73,9 @@ export function WorkspaceSwitcher() {
                     type="button"
                     onClick={() => {
                       setOpen(false)
-                      navigate(`/workspaces/${workspace._id}/documents`)
+                      navigate(`/workspaces/${workspace._id}/documents`, {
+                        state: { workspaceSwitcherPage },
+                      })
                     }}
                     className={[
                       'flex w-full min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-left transition',
@@ -134,6 +138,14 @@ export function WorkspaceSwitcher() {
       )}
     </div>
   )
+}
+
+function getWorkspaceSwitcherPage(state: unknown) {
+  const page = Number(
+    (state as { workspaceSwitcherPage?: unknown } | null)?.workspaceSwitcherPage,
+  )
+
+  return Number.isFinite(page) && page > 0 ? page : 1
 }
 
 function WorkspaceAvatar({ url, name }: { url?: string; name?: string }) {
